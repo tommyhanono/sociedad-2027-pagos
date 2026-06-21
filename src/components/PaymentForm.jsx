@@ -11,18 +11,25 @@ const CURRENT_YEAR = new Date().getFullYear()
 export default function PaymentForm({ onSuccess }) {
   const [janij, setJanij]       = useState('')
   const [monto, setMonto]       = useState('')
-  const [mes, setMes]           = useState('')
+  const [meses, setMeses]       = useState([])
   const [file, setFile]         = useState(null)
   const [preview, setPreview]   = useState(null)
   const [errors, setErrors]     = useState({})
   const [loading, setLoading]   = useState(false)
   const fileRef = useRef()
 
+  function toggleMes(label) {
+    setMeses(prev =>
+      prev.includes(label) ? prev.filter(m => m !== label) : [...prev, label]
+    )
+    setErrors(p => ({ ...p, mes: undefined }))
+  }
+
   function validate() {
     const e = {}
     if (!janij.trim())  e.janij = 'Ingresa el nombre del janij/a'
     if (!monto || isNaN(Number(monto)) || Number(monto) <= 0) e.monto = 'Ingresa un monto válido'
-    if (!mes)           e.mes   = 'Selecciona el mes que cubre'
+    if (!meses.length)  e.mes   = 'Selecciona al menos un mes'
     if (!file)          e.file  = 'Sube el comprobante de pago'
     return e
   }
@@ -59,15 +66,16 @@ export default function PaymentForm({ onSuccess }) {
       const comprobante_url = urlData.publicUrl
 
       // 3. Insert row
+      const mesLabel = meses.join(', ')
       const { error: insertError } = await supabase.from('pagos').insert({
         janij: janij.trim(),
         monto: Number(monto),
-        mes,
+        mes: mesLabel,
         comprobante_url,
       })
       if (insertError) throw insertError
 
-      onSuccess({ janij: janij.trim(), monto: Number(monto), mes, comprobante_url })
+      onSuccess({ janij: janij.trim(), monto: Number(monto), mes: mesLabel, comprobante_url })
     } catch (err) {
       console.error(err)
       setErrors({ submit: err.message || 'Ocurrió un error. Inténtalo de nuevo.' })
@@ -129,29 +137,37 @@ export default function PaymentForm({ onSuccess }) {
         {errors.monto && <p className="text-xs mt-1" style={{ color: '#EF4444' }}>{errors.monto}</p>}
       </div>
 
-      {/* Mes */}
+      {/* Meses — chips multi-select */}
       <div>
         <label className="block text-sm font-semibold mb-1.5" style={{ color: '#1A3A6B' }}>
-          Mes que cubre <span style={{ color: '#EF4444' }}>*</span>
+          Mes(es) que cubre <span style={{ color: '#EF4444' }}>*</span>
         </label>
-        <select
-          value={mes}
-          onChange={e => { setMes(e.target.value); setErrors(p => ({ ...p, mes: undefined })) }}
-          className="w-full px-4 py-3 rounded-xl border text-base outline-none appearance-none bg-white"
-          style={{
-            borderColor: errors.mes ? '#EF4444' : '#D1D5DB',
-            color: mes ? '#111827' : '#9CA3AF',
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 12px center',
-            backgroundSize: '20px',
-          }}
-        >
-          <option value="">Selecciona un mes</option>
-          {MONTHS.map(m => (
-            <option key={m} value={`${m} ${CURRENT_YEAR}`}>{m} {CURRENT_YEAR}</option>
-          ))}
-        </select>
+        <div className="grid grid-cols-3 gap-2">
+          {MONTHS.map(m => {
+            const label = `${m} ${CURRENT_YEAR}`
+            const selected = meses.includes(label)
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => toggleMes(label)}
+                className="py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+                style={{
+                  background: selected ? '#1A3A6B' : '#F3F4F6',
+                  color: selected ? '#fff' : '#374151',
+                  border: errors.mes && !meses.length ? '1.5px solid #EF4444' : selected ? '1.5px solid #1A3A6B' : '1.5px solid transparent',
+                }}
+              >
+                {m}
+              </button>
+            )
+          })}
+        </div>
+        {meses.length > 0 && (
+          <p className="text-xs mt-1.5" style={{ color: '#6B7280' }}>
+            Seleccionados: <strong>{meses.join(', ')}</strong>
+          </p>
+        )}
         {errors.mes && <p className="text-xs mt-1" style={{ color: '#EF4444' }}>{errors.mes}</p>}
       </div>
 
