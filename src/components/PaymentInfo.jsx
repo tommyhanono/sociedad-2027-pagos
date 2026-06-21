@@ -1,13 +1,14 @@
 export default function PaymentInfo({ onNext }) {
-  const banco       = import.meta.env.VITE_ACH_BANCO       || 'Banco Nacional de Panamá'
-  const cuenta      = import.meta.env.VITE_ACH_CUENTA      || '000-000-0000'
-  const beneficiario = import.meta.env.VITE_ACH_BENEFICIARIO || 'Sociedad 2027'
+  const banco        = import.meta.env.VITE_ACH_BANCO        || 'Credicorp Bank'
+  const cuenta       = import.meta.env.VITE_ACH_CUENTA       || '4021-973-201'
+  const tipo         = import.meta.env.VITE_ACH_TIPO         || 'Cuenta de Ahorros'
+  const beneficiario = import.meta.env.VITE_ACH_BENEFICIARIO || 'Margie Hanono ó Esther Davarro'
 
   const rows = [
-    { label: 'Banco',       value: banco },
     { label: 'Beneficiario', value: beneficiario },
-    { label: 'Tipo',        value: 'Cuenta Corriente' },
-    { label: 'Cuenta',      value: cuenta },
+    { label: 'Banco',        value: banco },
+    { label: 'Tipo',         value: tipo },
+    { label: 'Cuenta',       value: cuenta },
   ]
 
   return (
