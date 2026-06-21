@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: process.env.NODE_ENV === 'production' ? '/sociedad-2027-pagos/' : '/',
+  base: process.env.NODE_ENV === 'production' ? '/comprobantes-sociedad/' : '/',
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
     strictPort: false,
