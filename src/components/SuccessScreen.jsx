@@ -1,68 +1,103 @@
+const confettiPieces = [
+  { l: '8%',  c: '#F5A623', d: '0s',    s: 8 },
+  { l: '20%', c: '#1A3A6B', d: '.15s',  s: 6 },
+  { l: '34%', c: '#F8B948', d: '.3s',   s: 10 },
+  { l: '52%', c: '#22C55E', d: '.1s',   s: 7 },
+  { l: '68%', c: '#E0951C', d: '.22s',  s: 9 },
+  { l: '82%', c: '#7C9AC4', d: '.05s',  s: 6 },
+  { l: '92%', c: '#F5A623', d: '.34s',  s: 8 },
+]
+
+const WA_NUMBER = '50766818669'
+
+function buildWaUrl(janij, monto, mes, comprobante_url) {
+  const msg = [
+    `¡Hola! Les envío mi comprobante de pago 🧾`,
+    ``,
+    `*Alumno/a:* ${janij}`,
+    `*Monto:* B/. ${Number(monto).toFixed(2)}`,
+    `*Mes(es):* ${mes}`,
+    comprobante_url ? `*Comprobante:* ${comprobante_url}` : '',
+  ].filter(Boolean).join('\n')
+  return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`
+}
+
 export default function SuccessScreen({ data, onReset }) {
+  const { janij = '', monto = 0, mes = '', comprobante_url } = data || {}
+  const waUrl = buildWaUrl(janij, monto, mes, comprobante_url)
+
   return (
-    <div className="fade-in flex flex-col items-center gap-6 pt-12 pb-8">
-      {/* Animated checkmark */}
-      <div className="circle-pop w-24 h-24 rounded-full flex items-center justify-center" style={{ background: '#DCFCE7' }}>
-        <svg className="w-12 h-12" viewBox="0 0 52 52" fill="none">
-          <circle cx="26" cy="26" r="24" stroke="#22C55E" strokeWidth="3" fill="none" />
-          <polyline
-            className="check-path"
-            points="14,26 22,34 38,18"
-            fill="none"
-            stroke="#22C55E"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+    <div className="fade-in" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, paddingTop: 20, paddingBottom: 32 }}>
+
+      {/* Confetti */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+        {confettiPieces.map((p, i) => (
+          <span key={i} style={{ position: 'absolute', top: '-12px', left: p.l, width: p.s, height: p.s, background: p.c, borderRadius: i % 2 ? '2px' : '50%', animation: `confettiFall 1.5s ease-in ${p.d} 1 both` }} />
+        ))}
       </div>
 
-      {/* Title */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold" style={{ color: '#1A3A6B' }}>
+      {/* Animated check */}
+      <div className="circle-pop" style={{ width: 104, height: 104, borderRadius: '50%', background: 'var(--success-100)', display: 'grid', placeItems: 'center', boxShadow: '0 12px 28px rgba(34,197,94,.28)' }}>
+        <div style={{ width: 78, height: 78, borderRadius: '50%', background: 'var(--success-500)', display: 'grid', placeItems: 'center' }}>
+          <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
+            <path d="M14 25l7 7 14-15" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"
+              className="check-path" style={{ strokeDasharray: 48, strokeDashoffset: 48 }} />
+          </svg>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>
           ¡Comprobante recibido!
-        </h2>
-        <p className="text-lg mt-1 font-medium" style={{ color: '#F5A623' }}>
-          {data.janij}
+        </h1>
+        <p style={{ margin: '8px 0 0', fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
+          Gracias 🙏 Lo revisamos y te confirmamos por el grupo.
         </p>
       </div>
 
+      {/* Pending badge */}
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 'var(--r-pill)', background: 'var(--pending-100)', border: '1px solid #FDE68A' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--pending-500)', display: 'inline-block', animation: 'softPulse 1.8s ease-in-out infinite' }} />
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--pending-700)', fontFamily: 'var(--font-body)' }}>Pendiente de revisión</span>
+      </div>
+
       {/* Summary card */}
-      <div className="w-full rounded-2xl overflow-hidden shadow" style={{ background: '#fff' }}>
-        <div className="px-5 py-3 border-b" style={{ borderColor: '#F3F4F6' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#6B7280' }}>
+      <div style={{ width: '100%', borderRadius: 'var(--r-xl)', background: '#fff', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-soft)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
             Resumen del pago
           </p>
         </div>
         {[
-          { label: 'Janij/a',  value: data.janij },
-          { label: 'Monto',    value: `B/. ${Number(data.monto).toFixed(2)}` },
-          { label: 'Mes',      value: data.mes },
-          { label: 'Estado',   value: 'Pendiente de revisión' },
+          { label: 'Alumno/a', value: janij },
+          { label: 'Monto',    value: `B/. ${Number(monto).toFixed(2)}` },
+          { label: 'Mes(es)',  value: mes },
         ].map(({ label, value }) => (
-          <div key={label} className="flex justify-between items-center px-5 py-3 border-b last:border-0" style={{ borderColor: '#F3F4F6' }}>
-            <span className="text-sm" style={{ color: '#6B7280' }}>{label}</span>
-            <span className="text-sm font-semibold" style={{ color: '#111827' }}>{value}</span>
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border-soft)' }}>
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>{label}</span>
+            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-strong)', fontFamily: 'var(--font-body)', textAlign: 'right', maxWidth: '60%' }}>{value}</span>
           </div>
         ))}
+        {comprobante_url && (
+          <div style={{ padding: '14px 20px' }}>
+            <img src={comprobante_url} alt="Comprobante"
+              style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-sm)', display: 'block' }} />
+          </div>
+        )}
       </div>
 
-      {/* Receipt thumbnail */}
-      {data.comprobante_url && (
-        <div className="w-full rounded-2xl overflow-hidden shadow max-h-40">
-          <img src={data.comprobante_url} alt="Comprobante" className="w-full h-40 object-cover" />
-        </div>
-      )}
+      {/* WhatsApp CTA */}
+      <a href={waUrl} target="_blank" rel="noopener noreferrer"
+        style={{ width: '100%', padding: '17px 24px', borderRadius: 'var(--r-lg)', border: 'none', background: '#25D366', color: '#fff', fontSize: 'var(--text-lg)', fontWeight: 800, fontFamily: 'var(--font-display)', cursor: 'pointer', boxShadow: '0 10px 22px rgba(37,211,102,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, textDecoration: 'none', letterSpacing: '-0.01em' }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Enviar comprobante al tesorero
+      </a>
 
-      <p className="text-sm text-center" style={{ color: '#6B7280' }}>
-        El equipo revisará tu pago y te confirmará a la brevedad.
-      </p>
-
-      {/* Reset link */}
-      <button
-        onClick={onReset}
-        className="text-sm font-semibold underline underline-offset-2"
-        style={{ color: '#1A3A6B' }}
+      <button onClick={onReset}
+        style={{ background: 'none', border: 'none', padding: '8px 0', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--brand)', fontFamily: 'var(--font-body)', textDecoration: 'underline', textUnderlineOffset: 3 }}
       >
         Enviar otro comprobante
       </button>

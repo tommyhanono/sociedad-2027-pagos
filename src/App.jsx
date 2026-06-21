@@ -4,7 +4,7 @@ import PaymentForm from './components/PaymentForm'
 import SuccessScreen from './components/SuccessScreen'
 
 export default function App() {
-  const [screen, setScreen] = useState('info')   // 'info' | 'form' | 'success'
+  const [screen, setScreen] = useState('info')
   const [successData, setSuccessData] = useState(null)
 
   function handleSuccess(data) {
@@ -18,12 +18,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-svh flex items-start justify-center" style={{ background: '#f0f4f8' }}>
-      <div className="w-full px-4 pb-10" style={{ maxWidth: 440 }}>
-        {screen === 'info'    && <PaymentInfo onNext={() => setScreen('form')} />}
-        {screen === 'form'    && <PaymentForm onSuccess={handleSuccess} />}
-        {screen === 'success' && <SuccessScreen data={successData} onReset={handleReset} />}
-      </div>
+    <div style={{ width: '100%', maxWidth: 'var(--app-max-w)', margin: '0 auto', padding: '8px var(--app-pad-x) 40px', minHeight: '100vh' }}>
+      {screen === 'info'    && <PaymentInfo onNext={() => setScreen('form')} />}
+      {screen === 'form'    && <PaymentForm onSuccess={handleSuccess} onBack={() => setScreen('info')} />}
+      {screen === 'success' && <SuccessScreen data={successData} onReset={handleReset} />}
     </div>
   )
 }
