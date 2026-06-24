@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# scripts de migración throwaway
+supabase/run_*.py
