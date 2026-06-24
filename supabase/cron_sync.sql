@@ -21,7 +21,7 @@ select cron.schedule(
   '*/10 * * * *',
   $cmd$select net.http_post(
     url := '<PEGAR_URL_DEL_WEBHOOK>',  -- misma URL del webhook (no se versiona por seguridad)
-    body := '{"type":"SYNCALL","test":true}'::jsonb,
+    body := '{"type":"SYNCALL","test":true,"admin":"<ADMIN_SECRET>"}'::jsonb,  -- admin secret (vault, no versionar)
     headers := '{"Content-Type":"application/json"}'::jsonb,
     timeout_milliseconds := 30000
   )$cmd$

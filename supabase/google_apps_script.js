@@ -539,9 +539,10 @@ function doPost(e) {
 
     // ── SEGURIDAD ──────────────────────────────────────────────────────────────
     // El webhook es un endpoint PÚBLICO. Las operaciones de ADMIN/DEBUG (leer la hoja, setear
-    // secretos, mandar WhatsApp, OCR, reset, fixlog) van detrás de ADMIN_SECRET — `test:true` NO
-    // alcanza (cualquiera lo manda). NO se gatean acá el pago real (INSERT, vía el trigger) ni el
-    // sync (SYNCALL/SYNCALUMNOS/SYNCROW, que usa el cron), así nada de lo que funciona se rompe.
+    // secretos, WhatsApp, OCR, reset, fixlog) Y los SYNC* van detrás de ADMIN_SECRET — `test:true`
+    // NO alcanza (cualquiera lo manda). El cron manda el admin secret en su payload de SYNCALL.
+    // NO se gatea el pago real (INSERT, vía el trigger) — ese es el camino público legítimo del
+    // form, así nada de lo que funciona se rompe.
     const adminSecret = PropertiesService.getScriptProperties().getProperty('ADMIN_SECRET')
     const isAdmin = !!adminSecret && payload.admin === adminSecret
     // Bootstrap de una sola vez: setea ADMIN_SECRET solo si todavía no existe (luego queda bloqueado).
@@ -550,7 +551,7 @@ function doPost(e) {
       PropertiesService.getScriptProperties().setProperty('ADMIN_SECRET', String(payload.secret))
       return ContentService.createTextOutput('[SETADMIN] ok').setMimeType(ContentService.MimeType.TEXT)
     }
-    if (['READ','INSPECT','SETKEY','SETSECRET','WATEST','OCRTEST','RESETMONTHS','FIXLOG'].indexOf(payload.type) >= 0 && !isAdmin) {
+    if (['READ','INSPECT','SETKEY','SETSECRET','WATEST','OCRTEST','RESETMONTHS','FIXLOG','SYNCALUMNOS','SYNCALL','SYNCROW'].indexOf(payload.type) >= 0 && !isAdmin) {
       return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
     }
 
