@@ -227,10 +227,23 @@ export default function PaymentForm({ onSuccess, onBack }) {
       const comprobante_url = urlData.publicUrl
       const mesLabel = meses.map(m => `${MONTHS_FULL[m]} ${CUOTA_YEAR}`).join(', ')
       const montoFinal = Math.round(montoNum * 100) / 100
-      const { data: inserted, error: insertError } = await supabase.from('pagos').insert({
-        janij: janij.trim(), monto: montoFinal, mes: mesLabel, comprobante_url,
-      }).select('id').single()
-      if (insertError) throw insertError
+      // Registra el pago vía RPC `crear_pago` (security definer) para que la tabla `pagos` quede
+      // cerrada al público (la anon key no la lee ni inserta directo). Fallback al insert directo
+      // por si la RPC aún no está desplegada (transición). El webhook dispara igual (AFTER INSERT).
+      // Ver supabase/secure_pagos.sql.
+      let nuevoPagoId = null
+      const crearRpc = await supabase.rpc('crear_pago', {
+        p_janij: janij.trim(), p_monto: montoFinal, p_mes: mesLabel, p_comprobante_url: comprobante_url,
+      })
+      if (!crearRpc.error && crearRpc.data) {
+        nuevoPagoId = crearRpc.data
+      } else {
+        const { data: inserted, error: insertError } = await supabase.from('pagos').insert({
+          janij: janij.trim(), monto: montoFinal, mes: mesLabel, comprobante_url,
+        }).select('id').single()
+        if (insertError) throw insertError
+        nuevoPagoId = inserted?.id || null
+      }
 
       attemptIdRef.current = null   // éxito → el próximo pago usa un id nuevo
 
@@ -238,7 +251,7 @@ export default function PaymentForm({ onSuccess, onBack }) {
       // webhook leyendo el sheet, incluidos los pagos históricos) por polling.
       onSuccess({
         janij: janij.trim(), monto: montoFinal, mes: mesLabel,
-        comprobante_url, pagoId: inserted?.id || null,
+        comprobante_url, pagoId: nuevoPagoId,
       })
     } catch (err) {
       console.error(err)

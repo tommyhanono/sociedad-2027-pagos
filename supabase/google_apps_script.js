@@ -58,11 +58,14 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 function updatePagoEstado(pagoId, obj) {
   if (!pagoId) return
   try {
+    // Escribe el saldo vía RPC security-definer: la tabla `pagos` queda cerrada al rol anon
+    // (UPDATE directo ya no permitido). Reusa el secreto ALUMNOS_SECRET de Script Properties.
+    const secret = PropertiesService.getScriptProperties().getProperty('ALUMNOS_SECRET') || ''
     const resp = UrlFetchApp.fetch(
-      SUPABASE_URL + '/rest/v1/pagos?id=eq.' + encodeURIComponent(pagoId),
-      { method: 'patch', contentType: 'application/json', muteHttpExceptions: true,
+      SUPABASE_URL + '/rest/v1/rpc/set_pago_estado',
+      { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
         headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
-        payload: JSON.stringify({ estado: JSON.stringify(obj) }) }
+        payload: JSON.stringify({ p_id: pagoId, p_estado: JSON.stringify(obj), p_secret: secret }) }
     )
     // Si Supabase rechaza, avisamos: el pago SÍ entró al sheet pero la mamá puede
     // quedar sin saldo en el form (polling eterno). Best-effort, no hace throw.

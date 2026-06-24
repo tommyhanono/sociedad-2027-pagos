@@ -75,7 +75,7 @@ export default function PaymentInfo({ onNext }) {
           Datos para su transferencia
         </h1>
         <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-          Realice la transferencia ACH y luego presione <strong style={{ color: 'var(--text-body)' }}>Ya pagué</strong>.
+          Realice la transferencia ACH y luego <strong style={{ color: 'var(--text-body)' }}>adjunte la información de su pago</strong>.
         </p>
       </header>
 
@@ -121,7 +121,7 @@ export default function PaymentInfo({ onNext }) {
         onTouchStart={e => e.currentTarget.style.transform = 'scale(0.97)'}
         onTouchEnd={e => e.currentTarget.style.transform = 'scale(1)'}
       >
-        <span>💸</span> Ya pagué — subir comprobante
+        <span>📎</span> Adjuntar información de pago
       </button>
     </div>
   )

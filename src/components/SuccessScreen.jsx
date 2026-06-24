@@ -36,10 +36,19 @@ function useSaldo(pagoId) {
       if (cancelled) return
       tries++
       try {
-        const { data } = await supabase.from('pagos').select('estado').eq('id', pagoId).single()
-        if (data?.estado && data.estado !== 'pendiente') {
+        // Lee SOLO el estado del pago propio por id. Vía RPC `pago_estado` (security definer) para
+        // que la tabla `pagos` quede cerrada al público; con fallback al read directo por si la RPC
+        // todavía no está desplegada (transición). Ver supabase/secure_pagos.sql.
+        let estado = null
+        const viaRpc = await supabase.rpc('pago_estado', { p_id: pagoId })
+        if (!viaRpc.error && viaRpc.data != null) estado = viaRpc.data
+        if (estado == null) {
+          const { data } = await supabase.from('pagos').select('estado').eq('id', pagoId).single()
+          estado = data?.estado ?? null
+        }
+        if (estado && estado !== 'pendiente') {
           let parsed = null
-          try { parsed = JSON.parse(data.estado) } catch (e) {}
+          try { parsed = JSON.parse(estado) } catch (e) {}
           if (parsed && !cancelled) { setState({ status: 'done', result: parsed }); return }
         }
       } catch (e) {}
