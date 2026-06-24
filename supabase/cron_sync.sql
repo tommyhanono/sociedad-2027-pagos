@@ -20,7 +20,7 @@ select cron.schedule(
   'sync-alumnos-grisado',
   '*/10 * * * *',
   $cmd$select net.http_post(
-    url := 'https://script.google.com/macros/s/AKfycbwgGQAswjq_EhFI0Ox1lbPLAsOkuVOWO6lANMVDQZAICAIojgoDC4Fol5ukqU1RncIx/exec',
+    url := '<PEGAR_URL_DEL_WEBHOOK>',  -- misma URL del webhook (no se versiona por seguridad)
     body := '{"type":"SYNCALL","test":true}'::jsonb,
     headers := '{"Content-Type":"application/json"}'::jsonb,
     timeout_milliseconds := 30000

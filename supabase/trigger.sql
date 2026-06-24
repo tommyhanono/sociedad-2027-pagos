@@ -8,11 +8,10 @@ create extension if not exists pg_net;
 create or replace function notify_webhook()
 returns trigger language plpgsql as $$
 declare
-  -- URL ESTABLE de producción. Este es el deployment que el trigger usa desde siempre.
-  -- NO cambia entre releases: los updates se publican con
-  --   clasp deploy --deploymentId AKfycbwgGQAswjq_EhFI0Ox1lbPLAsOkuVOWO6lANMVDQZAICAIojgoDC4Fol5ukqU1RncIx
-  -- así la URL nunca cambia y este trigger no hay que volver a tocarlo.
-  webhook_url text := 'https://script.google.com/macros/s/AKfycbwgGQAswjq_EhFI0Ox1lbPLAsOkuVOWO6lANMVDQZAICAIojgoDC4Fol5ukqU1RncIx/exec';
+  -- URL ESTABLE de producción (el deployment fijo que el trigger usa desde siempre).
+  -- La URL / deploymentId reales NO se versionan acá por seguridad — ponelos al correr este
+  -- script (están en el vault / Script Properties). Se publica con: clasp deploy --deploymentId <ID>
+  webhook_url text := '<PEGAR_URL_DEL_WEBHOOK>';  -- https://script.google.com/macros/s/<ID>/exec
   payload jsonb;
 begin
   payload := jsonb_build_object(
