@@ -46,6 +46,8 @@ const STRUCTURAL_NAMES = new Set([
 const WA_INSTANCE  = '7107661922'
 const WA_TOKEN     = '7fe84dc2b26d4bc598f4967ddf97e3ec9518892fe5984bd3ba'
 const WA_CHAT_ID   = '50766797887@c.us'
+// En modo test, los códigos OTP van SIEMPRE a este número (el del dueño), no al de la familia.
+const TEST_PHONE   = '50766818669'
 
 // ── Supabase (para devolver el saldo real al form) ────────────
 // El webhook escribe el resultado en la columna `estado` de la fila recién insertada.
@@ -553,6 +555,26 @@ function doPost(e) {
     }
     if (['READ','INSPECT','SETKEY','SETSECRET','WATEST','OCRTEST','RESETMONTHS','FIXLOG','SYNCALUMNOS','SYNCALL','SYNCROW'].indexOf(payload.type) >= 0 && !isAdmin) {
       return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
+    }
+
+    // SENDOTP — manda el código de verificación por WhatsApp (Green API). Lo llama la RPC
+    // `solicitar_codigo` (server-side, vía pg_net) con el secreto ALUMNOS_SECRET. En modo test
+    // SIEMPRE va a TEST_PHONE (el número del dueño), nunca al de la familia.
+    if (payload.type === 'SENDOTP') {
+      const sec = PropertiesService.getScriptProperties().getProperty('ALUMNOS_SECRET')
+      if (!sec || payload.secret !== sec) return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
+      const destino = GLOBAL_TEST_MODE ? TEST_PHONE : String(payload.telefono || '').replace(/\D/g, '')
+      if (!destino) return ContentService.createTextOutput('sin destino').setMimeType(ContentService.MimeType.TEXT)
+      const msg = '🔐 *Sociedad 2027 — Pagos*\n\n' +
+                  'Tu código de verificación es:  *' + payload.codigo + '*\n\n' +
+                  'Sirve para ver el saldo de tu hijo/a y poder pagar. Vence en 10 minutos.\n\n' +
+                  '⚙️ Mensaje automático, enviado por inteligencia artificial. No respondas a este chat.'
+      try {
+        UrlFetchApp.fetch('https://api.green-api.com/waInstance' + WA_INSTANCE + '/sendMessage/' + WA_TOKEN,
+          { method: 'post', contentType: 'application/json',
+            payload: JSON.stringify({ chatId: destino + '@c.us', message: msg }), muteHttpExceptions: true })
+      } catch (e) {}
+      return ContentService.createTextOutput('[SENDOTP] enviado').setMimeType(ContentService.MimeType.TEXT)
     }
 
     // Reparar cabeceras duplicadas del log

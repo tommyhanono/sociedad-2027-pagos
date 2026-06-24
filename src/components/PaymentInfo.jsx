@@ -59,9 +59,16 @@ function CopyRow({ label, value, large }) {
   )
 }
 
-export default function PaymentInfo({ onNext }) {
+export default function PaymentInfo({ onNext, alumno, onSalir }) {
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--section-gap)' }}>
+
+      {alumno && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'var(--success-100,#dcfce7)', border: '1px solid #bbf7d0', marginTop: 8 }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--success-700,#15803d)', fontFamily: 'var(--font-body)' }}>✓ Verificado · {alumno}</span>
+          {onSalir && <button type="button" onClick={onSalir} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>Salir</button>}
+        </div>
+      )}
 
       {/* Header */}
       <header style={{ paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>

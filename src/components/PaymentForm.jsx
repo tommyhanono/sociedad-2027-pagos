@@ -87,8 +87,9 @@ function Field({ label, error, children, hint }) {
   )
 }
 
-export default function PaymentForm({ onSuccess, onBack }) {
-  const [janij, setJanij]       = useState('')
+export default function PaymentForm({ alumno = '', mesesPagados = [], onSuccess, onBack }) {
+  // El alumno ya viene VERIFICADO (por código). Acá no se escribe ni se busca el nombre.
+  const janij = alumno
   const [monto, setMonto]       = useState('')
   const [montoTouched, setMontoTouched] = useState(false)
   const [meses, setMeses]       = useState([])
@@ -97,50 +98,21 @@ export default function PaymentForm({ onSuccess, onBack }) {
   const [previewBroken, setPreviewBroken] = useState(false)
   const [errors, setErrors]     = useState({})
   const [loading, setLoading]   = useState(false)
-  const [sugerencias, setSugerencias] = useState([])   // nombres del autocompletado
-  const [mesesPagados, setMesesPagados] = useState([]) // meses ya pagados del alumno elegido (nombres completos)
   const fileRef = useRef()
   const submittingRef = useRef(false)   // evita doble envío en taps ultra-rápidos
   const attemptIdRef = useRef(null)     // id estable del intento de pago (anti-duplicado por reintento de red)
-  const sugTimer = useRef(null)         // debounce del autocompletado
 
-  // Un mes está "pagado" (grisado, no seleccionable) si el alumno elegido ya lo pagó completo.
+  // Saldo pendiente del alumno (para mostrarle cuánto debe): 11 cuotas (Feb–Dic) menos las pagadas.
+  const mesesPendientes = Math.max(0, 11 - mesesPagados.length)
+  const saldoPendiente  = mesesPendientes * CUOTA
+
+  // Un mes está "pagado" (grisado, no seleccionable) si el alumno ya lo pagó completo.
   const esPagado = (m) => mesesPagados.includes(MONTHS_FULL[m])
 
   const toggle = (m) => {
     if (MONTHS_DISABLED.has(m) || esPagado(m)) return
     setMeses(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])
     setErrors(p => ({ ...p, mes: undefined, monto: undefined }))
-  }
-
-  // Autocompletado: al escribir el nombre, buscamos coincidencias (debounce) y limpiamos el
-  // estado de "meses pagados" (ya no corresponde a un alumno elegido). Best-effort: si falla, nada.
-  function onNombreChange(val) {
-    setJanij(val)
-    setErrors(p => ({ ...p, janij: undefined }))
-    setMesesPagados([])
-    if (sugTimer.current) clearTimeout(sugTimer.current)
-    const q = val.trim()
-    if (q.length < 2) { setSugerencias([]); return }
-    sugTimer.current = setTimeout(async () => {
-      try {
-        const { data } = await supabase.rpc('buscar_alumnos', { q })
-        setSugerencias(Array.isArray(data) ? data.map(d => d.nombre) : [])
-      } catch (e) { setSugerencias([]) }
-    }, 280)
-  }
-
-  // Al elegir un alumno de la lista: fijamos el nombre exacto y grisamos sus meses ya pagados.
-  async function elegirAlumno(nombre) {
-    setJanij(nombre)
-    setSugerencias([])
-    setErrors(p => ({ ...p, janij: undefined }))
-    try {
-      const { data } = await supabase.rpc('meses_pagados', { p_nombre: nombre })
-      const arr = (typeof data === 'string' && data) ? data.split(',').map(s => s.trim()).filter(Boolean) : []
-      setMesesPagados(arr)
-      setMeses(prev => prev.filter(m => !arr.includes(MONTHS_FULL[m])))  // quitar de la selección los ya pagados
-    } catch (e) { setMesesPagados([]) }
   }
 
   // Si la mamá no escribió un monto a mano, lo sugerimos según los meses elegidos.
@@ -283,26 +255,24 @@ export default function PaymentForm({ onSuccess, onBack }) {
         </p>
       </header>
 
-      <Field label="Nombre del alumno o alumna" error={errors.janij} hint="Escriba el nombre y elíjalo de la lista">
-        <div style={{ position: 'relative' }}>
-          <input type="text" value={janij} inputMode="text" autoComplete="off" maxLength={60}
-            onChange={e => onNombreChange(e.target.value)}
-            placeholder="Escriba aquí el nombre"
-            style={inputBase(errors.janij)}
-            onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}
-            onBlur={e => { e.target.style.borderColor = errors.janij ? 'var(--error-500)' : 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)'; setTimeout(() => setSugerencias([]), 150) }}
-          />
-          {sugerencias.length > 0 && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-md)', overflow: 'hidden', maxHeight: 240, overflowY: 'auto' }}>
-              {sugerencias.map(n => (
-                <button key={n} type="button" onMouseDown={e => { e.preventDefault(); elegirAlumno(n) }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border-soft)', background: '#fff', fontSize: 'var(--text-md)', fontFamily: 'var(--font-body)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                >{n}</button>
-              ))}
-            </div>
-          )}
+      {/* Alumno YA verificado (no se escribe) + cuánto debe */}
+      <div style={{ borderRadius: 'var(--r-md)', padding: '14px 18px', background: 'var(--cream-050,#faf8f3)', border: '1px solid var(--border-soft,#e8e3d8)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>Pago de</p>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--brand)', fontFamily: 'var(--font-display)' }}>{janij}</p>
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-soft,#e8e3d8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: saldoPendiente === 0 ? 'var(--success-700,#15803d)' : 'var(--pending-700,#a16207)', fontFamily: 'var(--font-body)' }}>
+            {saldoPendiente === 0 ? '✓ Está al día' : 'Saldo pendiente'}
+          </span>
+          <span style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: saldoPendiente === 0 ? 'var(--success-700,#15803d)' : 'var(--pending-700,#a16207)', fontFamily: 'var(--font-display)' }}>
+            {saldoPendiente === 0 ? '¡Al día! 🎉' : `B/. ${saldoPendiente}`}
+          </span>
         </div>
-      </Field>
+        {saldoPendiente > 0 && (
+          <p style={{ margin: '6px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
+            Le {mesesPendientes === 1 ? 'falta' : 'faltan'} {mesesPendientes} {mesesPendientes === 1 ? 'mes' : 'meses'} por pagar (B/. {CUOTA} c/u).
+          </p>
+        )}
+      </div>
 
       <Field label="Meses que está pagando" error={errors.mes}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
