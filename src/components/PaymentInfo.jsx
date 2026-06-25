@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import StepBar from './StepBar'
+import { CUOTA } from '../lib/payment'
 
 const banco        = import.meta.env.VITE_ACH_BANCO        || 'Credicorp Bank'
 const cuenta       = import.meta.env.VITE_ACH_CUENTA       || '4021-973-201'
@@ -55,7 +56,7 @@ export default function PaymentInfo({ onNext, onBack, alumnoDisplay = '', monto 
         <p style={{ margin: '4px 0 0', fontSize: 'var(--text-4xl, 40px)', fontWeight: 800, color: 'var(--text-on-gold)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>B/. {monto}</p>
         {mesesFull.length > 0 && (
           <p style={{ margin: '8px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-on-gold)', opacity: 0.9, fontFamily: 'var(--font-body)' }}>
-            Por: {mesesFull.join(', ')} ({mesesFull.length} × B/. 30)
+            Por: {mesesFull.join(', ')} ({mesesFull.length} × B/. {CUOTA})
           </p>
         )}
       </div>
