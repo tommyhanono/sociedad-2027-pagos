@@ -42,6 +42,10 @@ const STRUCTURAL_NAMES = new Set([
   'total', 'totales', 'persona', 'pago', 'janija', 'janij', 'nombre', 'alumno', 'alumnoa', 'suma'
 ])
 
+// Alumnos EXCLUIDOS del grado: NO se cuentan (no se sincronizan, no salen en el autocompletado ni
+// la verificación, no se les puede aplicar un pago). Su NOMBRE en el sheet NO se borra: solo se ignora.
+const EXCLUDED_STUDENTS = new Set(['joyce e'])
+
 // ── WhatsApp (Green API) ──────────────────────────────────────
 const WA_INSTANCE  = '7107661922'
 const WA_TOKEN     = '7fe84dc2b26d4bc598f4967ddf97e3ec9518892fe5984bd3ba'
@@ -111,7 +115,7 @@ function syncAlumno(nombre, mesesPagadosStr) {
 // Lo usan onSheetEdit (edición manual) y el payload SYNCROW (prueba).
 function syncRowToSupabase(sheet, r) {
   const nombre = String(sheet.getRange(r, 2).getValue() || '').trim()
-  if (!nombre || STRUCTURAL_NAMES.has(normalize(nombre))) return false
+  if (!nombre || STRUCTURAL_NAMES.has(normalize(nombre)) || EXCLUDED_STUDENTS.has(normalize(nombre))) return false
   // No tocar filas con fórmulas en el bloque de meses (ej. fila Total)
   const hasFormula = sheet.getRange(r, 6, 1, 23).getFormulas()[0].some(function (f) { return f })
   if (hasFormula) return false
@@ -136,7 +140,7 @@ function syncAllAlumnos(sheet) {
     const rows = []
     for (let i = 0; i < logRow; i++) {
       const nm = String(vals[i][1] || '').trim()
-      if (!nm || STRUCTURAL_NAMES.has(normalize(nm))) continue
+      if (!nm || STRUCTURAL_NAMES.has(normalize(nm)) || EXCLUDED_STUDENTS.has(normalize(nm))) continue
       const meses = []
       for (const mo of MONTH_ORDER) {
         const v = Math.round((Number(vals[i][MONTH_COL[mo] - 1]) || 0) * 100) / 100
@@ -327,7 +331,7 @@ function findPersonRow(sheet, personName) {
       if (!cellRaw) continue
       const cellNorm = normalize(cellRaw)
       // Saltar filas de estructura (Total, Persona, Pago, headers) — nunca son alumnos
-      if (STRUCTURAL_NAMES.has(cellNorm)) continue
+      if (STRUCTURAL_NAMES.has(cellNorm) || EXCLUDED_STUDENTS.has(cellNorm)) continue
 
       if (cellNorm === joined) return { row: i + 1, confidence: 'exact', matched: cellRaw }
 
@@ -690,7 +694,7 @@ function doPost(e) {
       let n = 0
       for (let i = 0; i < logS; i++) {
         const nm = String(valsS[i][1] || '').trim()
-        if (!nm || STRUCTURAL_NAMES.has(normalize(nm))) continue
+        if (!nm || STRUCTURAL_NAMES.has(normalize(nm)) || EXCLUDED_STUDENTS.has(normalize(nm))) continue
         const meses = []
         for (const mo of MONTH_ORDER) {
           const v = Math.round((Number(valsS[i][MONTH_COL[mo] - 1]) || 0) * 100) / 100
