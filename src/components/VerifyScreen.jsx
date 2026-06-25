@@ -23,12 +23,12 @@ export default function VerifyScreen({ onVerified }) {
     sugTimer.current = setTimeout(async () => {
       try {
         const { data } = await supabase.rpc('buscar_alumnos', { q })
-        setSugerencias(Array.isArray(data) ? data.map(d => d.nombre) : [])
+        setSugerencias(Array.isArray(data) ? data : [])
       } catch (e) { setSugerencias([]) }
     }, 280)
   }
 
-  function elegir(n) { setNombre(n); setJanij(n); setSugerencias([]); setError('') }
+  function elegir(s) { setNombre(s.nombre); setJanij(s.nombre_completo || s.nombre); setSugerencias([]); setError('') }
 
   async function enviarCodigo() {
     const n = (nombre || janij).trim()
@@ -54,7 +54,7 @@ export default function VerifyScreen({ onVerified }) {
     try {
       const { data, error: e } = await supabase.rpc('verificar_codigo', { p_nombre: nombre, p_codigo: c })
       if (e) throw e
-      if (data && data.ok) onVerified({ nombre: data.nombre, meses: data.meses, token: data.token })
+      if (data && data.ok) onVerified({ nombre: data.nombre, nombre_completo: data.nombre_completo, meses: data.meses, token: data.token })
       else if (data && data.error === 'incorrecto') setError(`Código incorrecto. Te ${data.restantes === 1 ? 'queda' : 'quedan'} ${data.restantes} ${data.restantes === 1 ? 'intento' : 'intentos'}.`)
       else if (data && data.error === 'vencido') setError('El código venció o se agotaron los intentos. Volvé a pedir uno nuevo.')
       else setError('No pudimos verificar el código. Intentá de nuevo.')
@@ -114,10 +114,10 @@ export default function VerifyScreen({ onVerified }) {
                 onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)'; setTimeout(() => setSugerencias([]), 150) }} />
               {sugerencias.length > 0 && (
                 <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-md)', overflow: 'hidden', maxHeight: 240, overflowY: 'auto' }}>
-                  {sugerencias.map(n => (
-                    <button key={n} type="button" onMouseDown={e => { e.preventDefault(); elegir(n) }}
+                  {sugerencias.map(s => (
+                    <button key={s.nombre} type="button" onMouseDown={e => { e.preventDefault(); elegir(s) }}
                       style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border-soft)', background: '#fff', fontSize: 'var(--text-md)', fontFamily: 'var(--font-body)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                    >{n}</button>
+                    >{s.nombre_completo || s.nombre}</button>
                   ))}
                 </div>
               )}

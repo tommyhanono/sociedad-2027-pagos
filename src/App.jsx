@@ -27,7 +27,7 @@ export default function App() {
       try {
         const { data } = await supabase.rpc('ver_saldo_con_token', { p_token: token })
         if (!cancelled && data && data.ok) {
-          setSesion({ nombre: data.nombre, meses: parseMeses(data.meses), token })
+          setSesion({ nombre: data.nombre, nombreCompleto: data.nombre_completo, meses: parseMeses(data.meses), token })
           setScreen('info')
         } else if (!cancelled) {
           localStorage.removeItem(TOKEN_KEY)
@@ -38,9 +38,9 @@ export default function App() {
     return () => { cancelled = true }
   }, [])
 
-  function handleVerified({ nombre, meses, token }) {
+  function handleVerified({ nombre, nombre_completo, meses, token }) {
     localStorage.setItem(TOKEN_KEY, token)
-    setSesion({ nombre, meses: parseMeses(meses), token })
+    setSesion({ nombre, nombreCompleto: nombre_completo, meses: parseMeses(meses), token })
     setScreen('info')
   }
   function handleSalir() {
@@ -63,8 +63,8 @@ export default function App() {
   return (
     <div style={shell}>
       {screen === 'verify'  && <VerifyScreen onVerified={handleVerified} />}
-      {screen === 'info'    && sesion && <PaymentInfo onNext={() => setScreen('form')} alumno={sesion.nombre} onSalir={handleSalir} />}
-      {screen === 'form'    && sesion && <PaymentForm alumno={sesion.nombre} mesesPagados={sesion.meses} onSuccess={handleSuccess} onBack={() => setScreen('info')} />}
+      {screen === 'info'    && sesion && <PaymentInfo onNext={() => setScreen('form')} alumno={sesion.nombreCompleto || sesion.nombre} onSalir={handleSalir} />}
+      {screen === 'form'    && sesion && <PaymentForm alumno={sesion.nombre} alumnoDisplay={sesion.nombreCompleto || sesion.nombre} mesesPagados={sesion.meses} onSuccess={handleSuccess} onBack={() => setScreen('info')} />}
       {screen === 'success' && <SuccessScreen data={successData} onReset={handleReset} />}
     </div>
   )

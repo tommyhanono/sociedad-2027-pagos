@@ -1,7 +1,11 @@
 -- otp_verification.sql — Verificación por código (OTP) por WhatsApp. (APLICADO 2026-06-24)
 -- Cada mamá ve SOLO lo de su hijo: sin verificar no ve saldo ni montos. Sin login (recordame
 -- hasta fin de año). El secreto y la URL NO se versionan (placeholders).
--- alumnos.telefono guarda el número por familia; en modo test el webhook reenvía a TEST_PHONE.
+-- alumnos.telefono = número por familia; alumnos.nombre_completo = nombre real (ej. 'Raquel Abbo')
+-- para que el buscador encuentre por apellido. En modo test el webhook reenvía a TEST_PHONE.
+
+alter table public.alumnos add column if not exists telefono text;
+alter table public.alumnos add column if not exists nombre_completo text;
 
 -- Tablas OTP (cerradas al público: solo las RPC security-definer las tocan)
 create table if not exists public.otp_codigos (
@@ -23,64 +27,74 @@ create table if not exists public.otp_sesiones (
 alter table public.otp_sesiones enable row level security;
 revoke all on public.otp_sesiones from anon, authenticated;
 
--- solicitar_codigo: genera código de 4 dígitos, lo guarda y dispara el envío por el webhook (Green API)
+
+-- buscar_alumnos: ahora busca por nombre del sistema O nombre completo, y devuelve ambos
+drop function if exists public.buscar_alumnos(text);
+create function public.buscar_alumnos(q text)
+returns table(nombre text, nombre_completo text)
+language sql security definer set search_path to 'public' as $fn$
+  select a.nombre, coalesce(a.nombre_completo, a.nombre)
+  from alumnos a
+  where length(btrim(coalesce(q,''))) >= 2
+    and (a.nombre ilike '%'||btrim(q)||'%' or a.nombre_completo ilike '%'||btrim(q)||'%')
+  order by coalesce(a.nombre_completo, a.nombre) limit 10;
+$fn$;
+
+-- solicitar_codigo: resuelve el input por nombre del sistema O nombre completo
 create or replace function public.solicitar_codigo(p_nombre text)
 returns jsonb language plpgsql security definer set search_path to 'public' as $fn$
-declare v_tel text; v_codigo text; v_prev timestamptz;
+declare v_nom text; v_tel text; v_codigo text; v_prev timestamptz;
   v_url text := '<WEBHOOK_URL>';
   v_secret text := '<ALUMNOS_SECRET>';
 begin
-  select telefono into v_tel from alumnos where nombre = btrim(p_nombre);
-  if not found then return jsonb_build_object('ok', false, 'error', 'no_encontrado'); end if;
+  select nombre, telefono into v_nom, v_tel from alumnos
+    where lower(nombre) = lower(btrim(p_nombre)) or lower(nombre_completo) = lower(btrim(p_nombre)) limit 1;
+  if v_nom is null then return jsonb_build_object('ok', false, 'error', 'no_encontrado'); end if;
   if v_tel is null then return jsonb_build_object('ok', false, 'error', 'no_habilitado'); end if;
-  select creado into v_prev from otp_codigos where nombre = btrim(p_nombre);
-  if v_prev is not null and v_prev > now() - interval '45 seconds' then
-    return jsonb_build_object('ok', false, 'error', 'espera');
-  end if;
+  select creado into v_prev from otp_codigos where nombre = v_nom;
+  if v_prev is not null and v_prev > now() - interval '45 seconds' then return jsonb_build_object('ok', false, 'error', 'espera'); end if;
   v_codigo := lpad(((floor(random()*9000))::int + 1000)::text, 4, '0');
   insert into otp_codigos(nombre, codigo, expira, intentos, creado)
-    values (btrim(p_nombre), v_codigo, now() + interval '10 minutes', 0, now())
+    values (v_nom, v_codigo, now() + interval '10 minutes', 0, now())
     on conflict (nombre) do update set codigo=excluded.codigo, expira=excluded.expira, intentos=0, creado=now();
-  perform net.http_post(
-    url := v_url,
+  perform net.http_post(url := v_url,
     body := jsonb_build_object('type','SENDOTP','telefono',v_tel,'codigo',v_codigo,'secret',v_secret),
-    headers := '{"Content-Type":"application/json"}'::jsonb,
-    timeout_milliseconds := 30000
-  );
+    headers := '{"Content-Type":"application/json"}'::jsonb, timeout_milliseconds := 30000);
   return jsonb_build_object('ok', true);
 end; $fn$;
 
--- verificar_codigo: valida el código; si OK crea sesión hasta fin de año y devuelve los meses pagados
+-- verificar_codigo: resuelve el input y devuelve también el nombre completo (para mostrarlo)
 create or replace function public.verificar_codigo(p_nombre text, p_codigo text)
 returns jsonb language plpgsql security definer set search_path to 'public' as $fn$
-declare v_row otp_codigos; v_token text; v_exp timestamptz; v_meses text;
+declare v_nom text; v_nc text; v_row otp_codigos; v_token text; v_exp timestamptz; v_meses text;
 begin
-  select * into v_row from otp_codigos where nombre = btrim(p_nombre);
-  if not found or v_row.expira < now() or v_row.intentos >= 5 then
-    return jsonb_build_object('ok', false, 'error', 'vencido');
-  end if;
+  select nombre, coalesce(nombre_completo, nombre) into v_nom, v_nc from alumnos
+    where lower(nombre) = lower(btrim(p_nombre)) or lower(nombre_completo) = lower(btrim(p_nombre)) limit 1;
+  if v_nom is null then return jsonb_build_object('ok', false, 'error', 'vencido'); end if;
+  select * into v_row from otp_codigos where nombre = v_nom;
+  if not found or v_row.expira < now() or v_row.intentos >= 5 then return jsonb_build_object('ok', false, 'error', 'vencido'); end if;
   if v_row.codigo <> btrim(p_codigo) then
-    update otp_codigos set intentos = intentos + 1 where nombre = btrim(p_nombre);
+    update otp_codigos set intentos = intentos + 1 where nombre = v_nom;
     return jsonb_build_object('ok', false, 'error', 'incorrecto', 'restantes', greatest(0, 5 - (v_row.intentos+1)));
   end if;
-  v_token := md5(random()::text || clock_timestamp()::text || p_nombre);
+  v_token := md5(random()::text || clock_timestamp()::text || v_nom);
   v_exp := date_trunc('year', now()) + interval '1 year' - interval '1 second';
-  insert into otp_sesiones(token, nombre, expira) values (v_token, btrim(p_nombre), v_exp);
-  delete from otp_codigos where nombre = btrim(p_nombre);
-  select meses_pagados into v_meses from alumnos where nombre = btrim(p_nombre);
-  return jsonb_build_object('ok', true, 'token', v_token, 'nombre', btrim(p_nombre), 'meses', coalesce(v_meses,''), 'expira', v_exp);
+  insert into otp_sesiones(token, nombre, expira) values (v_token, v_nom, v_exp);
+  delete from otp_codigos where nombre = v_nom;
+  select meses_pagados into v_meses from alumnos where nombre = v_nom;
+  return jsonb_build_object('ok', true, 'token', v_token, 'nombre', v_nom, 'nombre_completo', v_nc, 'meses', coalesce(v_meses,''), 'expira', v_exp);
 end; $fn$;
 
--- ver_saldo_con_token: "recordame" — restaura la sesión sin OTP mientras el token no venza (fin de año)
+-- ver_saldo_con_token: devuelve también el nombre completo
 create or replace function public.ver_saldo_con_token(p_token text)
 returns jsonb language plpgsql security definer set search_path to 'public' as $fn$
-declare v_nombre text; v_exp timestamptz; v_meses text;
+declare v_nom text; v_nc text; v_exp timestamptz; v_meses text;
 begin
-  select nombre, expira into v_nombre, v_exp from otp_sesiones where token = p_token;
+  select nombre, expira into v_nom, v_exp from otp_sesiones where token = p_token;
   if not found or v_exp < now() then return jsonb_build_object('ok', false); end if;
-  select meses_pagados into v_meses from alumnos where nombre = v_nombre;
-  return jsonb_build_object('ok', true, 'nombre', v_nombre, 'meses', coalesce(v_meses,''), 'expira', v_exp);
+  select meses_pagados, coalesce(nombre_completo, nombre) into v_meses, v_nc from alumnos where nombre = v_nom;
+  return jsonb_build_object('ok', true, 'nombre', v_nom, 'nombre_completo', v_nc, 'meses', coalesce(v_meses,''), 'expira', v_exp);
 end; $fn$;
 
--- Cerrar la fuga: meses_pagados(nombre) ya no es llamable por el público (lo reemplazan las RPC OTP)
-revoke execute on function public.meses_pagados(text) from anon;
+-- Cerrar la fuga: meses_pagados(nombre) ya no es llamable por el público
+revoke execute on function public.meses_pagados(text) from public, anon;

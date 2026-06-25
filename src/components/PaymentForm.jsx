@@ -87,9 +87,9 @@ function Field({ label, error, children, hint }) {
   )
 }
 
-export default function PaymentForm({ alumno = '', mesesPagados = [], onSuccess, onBack }) {
+export default function PaymentForm({ alumno = '', alumnoDisplay = '', mesesPagados = [], onSuccess, onBack }) {
   // El alumno ya viene VERIFICADO (por código). Acá no se escribe ni se busca el nombre.
-  const janij = alumno
+  const janij = alumno   // nombre del SISTEMA (para crear_pago y el match en la hoja)
   const [monto, setMonto]       = useState('')
   const [montoTouched, setMontoTouched] = useState(false)
   const [meses, setMeses]       = useState([])
@@ -258,7 +258,7 @@ export default function PaymentForm({ alumno = '', mesesPagados = [], onSuccess,
       {/* Alumno YA verificado (no se escribe) + cuánto debe */}
       <div style={{ borderRadius: 'var(--r-md)', padding: '14px 18px', background: 'var(--cream-050,#faf8f3)', border: '1px solid var(--border-soft,#e8e3d8)' }}>
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>Pago de</p>
-        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--brand)', fontFamily: 'var(--font-display)' }}>{janij}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--brand)', fontFamily: 'var(--font-display)' }}>{alumnoDisplay || janij}</p>
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-soft,#e8e3d8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: saldoPendiente === 0 ? 'var(--success-700,#15803d)' : 'var(--pending-700,#a16207)', fontFamily: 'var(--font-body)' }}>
             {saldoPendiente === 0 ? '✓ Está al día' : 'Saldo pendiente'}
