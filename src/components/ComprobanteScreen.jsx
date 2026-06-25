@@ -54,7 +54,9 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       const hashPrefix  = file.hash ? `${file.hash}__` : ''
       const filename    = `${hashPrefix}${attemptIdRef.current}-${safeName}.${file.ext}`
       const contentType = file.kind === 'pdf' ? 'application/pdf' : 'image/jpeg'
-      const { error: uploadError } = await supabase.storage.from('comprobantes').upload(filename, file.uploadFile, { contentType })
+      // upsert:true → si la mamá reintenta tras un fallo posterior (crear_pago), el upload del MISMO
+      // archivo (filename determinístico por intento) sobreescribe en vez de tirar 409 y dejarla trabada.
+      const { error: uploadError } = await supabase.storage.from('comprobantes').upload(filename, file.uploadFile, { contentType, upsert: true })
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('comprobantes').getPublicUrl(filename)
       const comprobante_url = urlData.publicUrl

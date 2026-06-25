@@ -52,8 +52,8 @@ function useSaldo(pagoId) {
           if (parsed && !cancelled) { setState({ status: 'done', result: parsed }); return }
         }
       } catch (e) {}
-      // Hasta ~24s: cubre el cold start del webhook de Apps Script (10-15s)
-      if (tries >= 16) { if (!cancelled) setState({ status: 'timeout' }); return }
+      // Hasta ~38s: cubre cold start del webhook de Apps Script (10-15s) + OCR del comprobante + escrituras
+      if (tries >= 26) { if (!cancelled) setState({ status: 'timeout' }); return }
       setTimeout(poll, 1500)
     }
     const t = setTimeout(poll, 800)
@@ -84,7 +84,7 @@ function SaldoRow({ state }) {
       <div style={{ ...baseRow, background: 'var(--cream-050,#faf8f3)' }}>
         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>Saldo</span>
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-body)', fontFamily: 'var(--font-body)', textAlign: 'right', maxWidth: '62%' }}>
-          Se lo confirmaremos por el grupo
+          Registrando su pago — se lo confirmaremos por el grupo
         </span>
       </div>
     )
