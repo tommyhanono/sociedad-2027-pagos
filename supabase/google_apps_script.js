@@ -47,8 +47,15 @@ const STRUCTURAL_NAMES = new Set([
 const EXCLUDED_STUDENTS = new Set(['joyce e'])
 
 // ── WhatsApp (Green API) ──────────────────────────────────────
-const WA_INSTANCE  = '7107661922'
-const WA_TOKEN     = '7fe84dc2b26d4bc598f4967ddf97e3ec9518892fe5984bd3ba'
+// WA_TOKEN es un secreto server-side → se lee de Script Properties (igual que ANTHROPIC_KEY/ALUMNOS_SECRET).
+// El fallback al literal mantiene el webhook funcionando HASTA que se setee la propiedad (transición SIN
+// downtime); el guard evita romper triggers con permisos limitados.
+// 🔒 TODO seguridad: tras ROTAR el token en Green API y setear la Script Property `WA_TOKEN`, BORRAR el literal.
+function _waProp(key, fallback) {
+  try { return PropertiesService.getScriptProperties().getProperty(key) || fallback } catch (e) { return fallback }
+}
+const WA_INSTANCE  = _waProp('WA_INSTANCE', '7107661922')
+const WA_TOKEN     = _waProp('WA_TOKEN', '7fe84dc2b26d4bc598f4967ddf97e3ec9518892fe5984bd3ba')
 const WA_CHAT_ID   = '50766797887@c.us'
 // En modo test, los códigos OTP van SIEMPRE a este número (el del dueño), no al de la familia.
 const TEST_PHONE   = '50766818669'
