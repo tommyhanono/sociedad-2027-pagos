@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import VerifyScreen from './components/VerifyScreen'
+import MonthsScreen from './components/MonthsScreen'
 import PaymentInfo from './components/PaymentInfo'
-import PaymentForm from './components/PaymentForm'
+import ComprobanteScreen from './components/ComprobanteScreen'
 import SuccessScreen from './components/SuccessScreen'
 
 const TOKEN_KEY = 'sociedad2027_sesion'
@@ -12,13 +13,14 @@ function parseMeses(s) {
 }
 
 export default function App() {
-  const [sesion, setSesion]   = useState(null)     // { nombre, meses: [], token }
-  const [screen, setScreen]   = useState('verify')
+  const [sesion, setSesion]   = useState(null)     // { nombre, nombreCompleto, meses: [], token }
+  const [pago, setPago]       = useState(null)     // { meses: [codes], mesesFull: [names], monto, mesLabel }
+  const [screen, setScreen]   = useState('verify') // verify → months → info → comprobante → success
   const [successData, setSuccessData] = useState(null)
   const [restoring, setRestoring]     = useState(true)
 
   // "Recordame": al abrir, si hay token guardado y sigue válido (hasta fin de año), restaura la
-  // sesión sin pedir código de nuevo. Si venció o no existe, va a la pantalla de verificación.
+  // sesión sin pedir código. Si venció o no existe, va a la pantalla de verificación. (NO se toca.)
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) { setRestoring(false); return }
@@ -28,7 +30,7 @@ export default function App() {
         const { data } = await supabase.rpc('ver_saldo_con_token', { p_token: token })
         if (!cancelled && data && data.ok) {
           setSesion({ nombre: data.nombre, nombreCompleto: data.nombre_completo, meses: parseMeses(data.meses), token })
-          setScreen('info')
+          setScreen('months')
         } else if (!cancelled) {
           localStorage.removeItem(TOKEN_KEY)
         }
@@ -41,16 +43,19 @@ export default function App() {
   function handleVerified({ nombre, nombre_completo, meses, token }) {
     localStorage.setItem(TOKEN_KEY, token)
     setSesion({ nombre, nombreCompleto: nombre_completo, meses: parseMeses(meses), token })
-    setScreen('info')
+    setPago(null)
+    setScreen('months')
   }
   function handleSalir() {
     localStorage.removeItem(TOKEN_KEY)
-    setSesion(null); setSuccessData(null); setScreen('verify')
+    setSesion(null); setPago(null); setSuccessData(null); setScreen('verify')
   }
+  function handleMonthsContinue(p) { setPago(p); setScreen('info') }
   function handleSuccess(data) { setSuccessData(data); setScreen('success') }
-  function handleReset() { setSuccessData(null); setScreen('info') }
+  function handleReset() { setSuccessData(null); setPago(null); setScreen('months') }
 
   const shell = { width: '100%', maxWidth: 'var(--app-max-w)', margin: '0 auto', padding: '8px var(--app-pad-x) 40px', minHeight: '100vh' }
+  const alumnoDisplay = sesion ? (sesion.nombreCompleto || sesion.nombre) : ''
 
   if (restoring) {
     return (
@@ -62,9 +67,23 @@ export default function App() {
 
   return (
     <div style={shell}>
-      {screen === 'verify'  && <VerifyScreen onVerified={handleVerified} />}
-      {screen === 'info'    && sesion && <PaymentInfo onNext={() => setScreen('form')} alumno={sesion.nombreCompleto || sesion.nombre} onSalir={handleSalir} />}
-      {screen === 'form'    && sesion && <PaymentForm alumno={sesion.nombre} alumnoDisplay={sesion.nombreCompleto || sesion.nombre} mesesPagados={sesion.meses} onSuccess={handleSuccess} onBack={() => setScreen('info')} />}
+      {screen === 'verify' && <VerifyScreen onVerified={handleVerified} />}
+
+      {screen === 'months' && sesion && (
+        <MonthsScreen alumnoDisplay={alumnoDisplay} mesesPagados={sesion.meses}
+          initialMeses={pago ? pago.meses : []} onContinue={handleMonthsContinue} onSalir={handleSalir} />
+      )}
+
+      {screen === 'info' && sesion && pago && (
+        <PaymentInfo alumnoDisplay={alumnoDisplay} monto={pago.monto} mesesFull={pago.mesesFull}
+          onNext={() => setScreen('comprobante')} onBack={() => setScreen('months')} onSalir={handleSalir} />
+      )}
+
+      {screen === 'comprobante' && sesion && pago && (
+        <ComprobanteScreen alumno={sesion.nombre} alumnoDisplay={alumnoDisplay} monto={pago.monto}
+          mesesFull={pago.mesesFull} mesLabel={pago.mesLabel} onSuccess={handleSuccess} onBack={() => setScreen('info')} />
+      )}
+
       {screen === 'success' && <SuccessScreen data={successData} onReset={handleReset} />}
     </div>
   )
