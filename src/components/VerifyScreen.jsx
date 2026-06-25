@@ -49,7 +49,7 @@ export default function VerifyScreen({ onVerified }) {
 
   async function verificar() {
     const c = codigo.trim()
-    if (!/^\d{4}$/.test(c)) { setError('Escribí los 4 números del código.'); return }
+    if (!/^\d{4,6}$/.test(c)) { setError('Escribí el código que te enviamos por WhatsApp.'); return }
     setLoading(true); setError('')
     try {
       const { data, error: e } = await supabase.rpc('verificar_codigo', { p_nombre: nombre, p_codigo: c })
@@ -94,7 +94,7 @@ export default function VerifyScreen({ onVerified }) {
         </p>
         <ol style={{ margin: '10px 0 0', paddingLeft: 20, fontSize: 'var(--text-sm)', color: '#92400E', lineHeight: 1.7, fontFamily: 'var(--font-body)' }}>
           <li>Escribí el nombre de tu hijo/a y elegilo de la lista.</li>
-          <li>Te enviamos un código de 4 números por WhatsApp.</li>
+          <li>Te enviamos un código por WhatsApp.</li>
           <li>Escribilo acá y listo: vas a ver tu saldo y vas a poder pagar.</li>
         </ol>
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-xs)', color: '#92400E', lineHeight: 1.6, fontFamily: 'var(--font-body)' }}>
@@ -138,10 +138,10 @@ export default function VerifyScreen({ onVerified }) {
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Escribí el código de 4 números</label>
-            <input type="text" value={codigo} inputMode="numeric" autoComplete="one-time-code" maxLength={4}
-              onChange={e => { setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4)); setError('') }}
-              placeholder="0000"
+            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Escribí el código que te enviamos</label>
+            <input type="text" value={codigo} inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+              onChange={e => { setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6)); setError('') }}
+              placeholder="——————"
               style={{ ...inputStyle, fontSize: 'var(--text-2xl)', fontWeight: 800, letterSpacing: '0.5em', textAlign: 'center', fontFamily: 'var(--font-display)' }}
               onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)' }} />
