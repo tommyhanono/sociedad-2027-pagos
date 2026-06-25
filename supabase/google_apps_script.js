@@ -222,12 +222,16 @@ function sendWhatsAppWithImage(caption, imageUrl) {
     }
 
     // Green API sendFileByUpload — multipart con blob
-    UrlFetchApp.fetch(
+    const up = UrlFetchApp.fetch(
       'https://api.green-api.com/waInstance' + WA_INSTANCE + '/sendFileByUpload/' + WA_TOKEN,
       { method: 'post', muteHttpExceptions: true,
         payload: { chatId: WA_CHAT_ID, caption: caption,
                    fileName: 'comprobante.' + ext, file: blob } }
     )
+    // Si Green API rechaza el archivo (instancia desconectada, cuota, rate-limit) NO lanza excepción
+    // por muteHttpExceptions → el catch no se dispara. Chequeamos el código y caemos al texto + URL
+    // para que Marce igual reciba el aviso del pago (mismo fallback que la línea de arriba y el catch).
+    if (up.getResponseCode() !== 200) { sendWhatsApp(caption + '\n🧾 ' + imageUrl) }
   } catch (e) {
     // Si falla por cualquier razón, manda el texto solo
     sendWhatsApp(caption + '\n🧾 ' + imageUrl)
