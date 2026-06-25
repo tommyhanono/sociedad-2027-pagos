@@ -425,6 +425,54 @@ function distributePayment(sheet, matchedRow, months, monto) {
   return { log, extra: remaining > 0.01 ? Math.round(remaining * 100) / 100 : 0 }
 }
 
+// ── Saldo a favor (sobrepagos) ────────────────────────────────
+// Sección APARTE (columnas K-L = 11-12, al lado del log, sin tocar la matriz de meses) que
+// ACUMULA por alumno la "plata de más" cuando un pago supera lo que llena meses completos.
+// Así no se pierde y Marce la ve. Queda como crédito (no se aplica solo); Marce decide.
+const SF_HEADER   = '💰 SALDO A FAVOR'
+const SF_NAME_COL = 11   // columna K
+const SF_AMT_COL  = 12   // columna L
+
+// Devuelve la fila de la 1ra ENTRADA de la sección (creándola si no existe).
+function ensureSaldoFavorSection(sheet) {
+  const last = Math.max(sheet.getLastRow(), 1)
+  const colK = sheet.getRange(1, SF_NAME_COL, last, 1).getValues()
+  for (let i = 0; i < colK.length; i++) {
+    if (String(colK[i][0]).trim() === SF_HEADER) return i + 3   // header + subheader + 1ra entrada
+  }
+  // No existe: la ubicamos a la altura del header del log (misma zona, columnas aparte).
+  let hdrRow = sheet.getLastRow() + 2
+  const colA = sheet.getRange(1, 1, last, 1).getValues()
+  for (let i = 0; i < colA.length; i++) { if (String(colA[i][0]).trim() === LOG_HEADER) { hdrRow = i + 1; break } }
+  sheet.getRange(hdrRow, SF_NAME_COL).setValue(SF_HEADER)
+  sheet.getRange(hdrRow, SF_NAME_COL, 1, 2).setFontWeight('bold').setBackground('#15803d').setFontColor('#ffffff')
+  sheet.getRange(hdrRow + 1, SF_NAME_COL, 1, 2).setValues([['Alumno', 'Saldo a favor B/.']])
+  sheet.getRange(hdrRow + 1, SF_NAME_COL, 1, 2).setFontWeight('bold').setBackground('#22c55e').setFontColor('#ffffff')
+  return hdrRow + 2
+}
+
+// Suma `extra` al saldo a favor del alumno (acumula; crea la fila si es la 1ra vez). NO destructivo.
+function addSaldoFavor(sheet, nombre, extra) {
+  if (!nombre || !(extra > 0)) return
+  const firstRow = ensureSaldoFavorSection(sheet)
+  const last = Math.max(sheet.getLastRow(), firstRow)
+  const names = sheet.getRange(firstRow, SF_NAME_COL, last - firstRow + 1, 1).getValues()
+  let target = -1
+  for (let i = 0; i < names.length; i++) {
+    const v = String(names[i][0]).trim()
+    if (v === String(nombre).trim()) {
+      const row = firstRow + i
+      const cur = Math.round((Number(sheet.getRange(row, SF_AMT_COL).getValue()) || 0) * 100) / 100
+      sheet.getRange(row, SF_AMT_COL).setValue(Math.round((cur + extra) * 100) / 100)
+      return
+    }
+    if (v === '' && target < 0) target = firstRow + i
+  }
+  if (target < 0) target = firstRow + names.length
+  sheet.getRange(target, SF_NAME_COL).setValue(String(nombre).trim())
+  sheet.getRange(target, SF_AMT_COL).setValue(Math.round(extra * 100) / 100)
+}
+
 // ── Log section ───────────────────────────────────────────────
 
 function ensureLogHeader(sheet) {
@@ -768,8 +816,18 @@ function doPost(e) {
         sh2.getRange(i + 1, 5, 1, 24).setValues([block])
         cleared++
       }
+      // Limpiar también la sección "Saldo a favor" (cols K-L), dejando el encabezado.
+      try {
+        const lastK = sh2.getLastRow()
+        const colK  = sh2.getRange(1, SF_NAME_COL, lastK, 1).getValues()
+        let sfHdr = -1
+        for (let i = 0; i < colK.length; i++) { if (String(colK[i][0]).trim() === SF_HEADER) { sfHdr = i + 1; break } }
+        if (sfHdr > 0 && lastK > sfHdr + 1) {
+          sh2.getRange(sfHdr + 2, SF_NAME_COL, lastK - (sfHdr + 1), 2).clearContent()
+        }
+      } catch (e) {}
       SpreadsheetApp.flush()
-      return ContentService.createTextOutput('[RESETMONTHS] ' + cleared + ' alumnos: montos en 0, nombres por mes intactos').setMimeType(ContentService.MimeType.TEXT)
+      return ContentService.createTextOutput('[RESETMONTHS] ' + cleared + ' alumnos: montos en 0, nombres por mes intactos, saldo a favor limpio').setMimeType(ContentService.MimeType.TEXT)
     }
 
     if (payload.type !== 'INSERT') {
@@ -899,13 +957,17 @@ function doPost(e) {
           const r = distributePayment(sheet, matchResult.row, months, monto)
           distLog = r.log; distExtra = r.extra
           aplicado = true
+          // Sobrepago: lo que sobró (no llenó un mes completo) se guarda como SALDO A FAVOR
+          // (sección aparte, columnas K-L). Así no se pierde; Marce decide qué hacer.
+          if (r.extra > 0) { try { addSaldoFavor(sheet, matchResult.matched, r.extra) } catch (e) {} }
           saldo   = calculateBalance(sheet, matchResult.row)
           estado  = '✓ aplicado' + tag + ' | ' + r.log.join(' · ') + ' | Saldo: B/.' + saldo
-          if (r.extra > 0) estado += ' | ⚠️ EXTRA B/.' + r.extra + ' — revisar'
+          if (r.extra > 0) estado += ' | 💰 B/.' + r.extra + ' → saldo a favor'
         } else {
-          // No quedan meses pendientes: el alumno ya completó el año
+          // Ya completó el año: toda la plata es de más → saldo a favor (no se aplica a meses).
+          try { addSaldoFavor(sheet, matchResult.matched, monto) } catch (e) {}
           saldo  = saldoActual
-          estado = '⚠️ año completo' + tag + ' (saldo B/.' + saldo + ') — posible adelanto/duplicado'
+          estado = '⚠️ año completo' + tag + ' | 💰 B/.' + monto + ' → saldo a favor (revisar adelanto/duplicado)'
         }
       } else if (matchResult.confidence === 'fuzzy') {
         estado = '⚠️ PENDIENTE — nombre similar a "' + matchResult.matched + '" (enviado: "' +
@@ -945,7 +1007,7 @@ function doPost(e) {
           ? '👤 ' + sheetName + '\n   ← enviado como: "' + submitted + '"'
           : '👤 ' + sheetName
         const logStr    = distLog.join(' · ') || mesesStr
-        const extraWarn = distExtra > 0 ? '\n⚠️ B/.' + distExtra + ' extra — revisar' : ''
+        const extraWarn = distExtra > 0 ? '\n💰 B/.' + distExtra + ' de más → guardado como saldo a favor' : ''
         const reqStr  = requestedMonths.join(', ')
         const appStr  = months.join(', ')
         const reqNote = reqStr && reqStr !== appStr
@@ -961,8 +1023,7 @@ function doPost(e) {
           ? '👤 ' + sheetName + '\n   ← enviado como: "' + submitted + '"'
           : '👤 ' + sheetName
         waCaption = prefix + '⚠️ Pago recibido — año ya completo\n' + nameLine + '\n' +
-          '💰 B/.' + monto + '\n' +
-          '💳 Saldo pendiente: B/.' + (saldo != null ? saldo : 0) + '\n' +
+          '💰 B/.' + monto + ' → guardado como saldo a favor\n' +
           'Este alumno ya pagó los 11 meses. Revisar si es adelanto o duplicado.'
 
       } else if (montoSospechoso) {
