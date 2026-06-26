@@ -308,6 +308,33 @@ function setupAvisosTrigger() {
   return 'OK: trigger flushAvisos creado (cada 5 min)'
 }
 
+// ── ARCHIVO DE COMPROBANTES POR EMAIL ──────────────────────────────────────────────
+// Cada pago se manda TAMBIÉN a este email con el comprobante ADJUNTO (canal confiable de Google,
+// independiente de Green API) → queda todo archivado y buscable aunque WhatsApp falle. Best-effort.
+const SOCIEDAD_EMAIL = 'sociedad.2027@gmail.com'
+
+function emailComprobante(subject, body, imageUrl) {
+  try {
+    let attachments = []
+    if (imageUrl) {
+      try {
+        const fileId = extractDriveId(imageUrl)
+        const blob = fileId ? DriveApp.getFileById(fileId).getBlob()
+                            : UrlFetchApp.fetch(imageUrl, { muteHttpExceptions: true }).getBlob()
+        if (blob) {
+          const ext = /\.pdf(\?|$)/i.test(imageUrl) ? 'pdf' : /\.png(\?|$)/i.test(imageUrl) ? 'png' : 'jpg'
+          blob.setName('comprobante.' + ext)
+          attachments = [blob]
+        }
+      } catch (e) {}
+    }
+    MailApp.sendEmail({ to: SOCIEDAD_EMAIL, subject: subject,
+      body: body + (imageUrl ? '\n\nComprobante: ' + imageUrl : ''),
+      attachments: attachments })
+    return true
+  } catch (e) { return false }
+}
+
 // ── OCR del comprobante (advisory) ────────────────────────────
 // Lee con Claude (vision) el nº de referencia + monto + fecha del comprobante y devuelve
 // una línea corta para incluir en el WhatsApp a Marce (así detecta recibos repetidos de un
@@ -1151,6 +1178,11 @@ function doPost(e) {
       if (!okAviso) {
         enqueueAviso(row.id, waCaption, row.comprobante_url || '')
       }
+
+      // Archivo por email: TODO comprobante queda guardado en sociedad.2027@gmail.com (canal confiable,
+      // con el comprobante adjunto). Independiente de WhatsApp/Green → no se pierde ninguno.
+      emailComprobante('Comprobante — ' + (matchResult.matched || submitted || 'pago') + ' — B/.' + monto,
+        waCaption, row.comprobante_url || '')
 
       // Resultado a Supabase (para el saldo del form)
       let resultObj
