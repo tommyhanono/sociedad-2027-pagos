@@ -692,6 +692,11 @@ function doPost(e) {
       return ContentService.createTextOutput('bad json').setMimeType(ContentService.MimeType.TEXT)
     }
 
+    // Vaciado OPORTUNISTA de la cola de avisos: en CADA actividad del webhook reintentamos los avisos
+    // pendientes → entrega garantizada por WhatsApp SIN depender de un trigger (no necesita permisos
+    // nuevos). Barato si la cola está vacía (mutex + sin items = milisegundos). Best-effort, nunca rompe.
+    try { flushAvisos() } catch (eFlush) {}
+
     // ── SEGURIDAD ──────────────────────────────────────────────────────────────
     // El webhook es un endpoint PÚBLICO. Las operaciones de ADMIN/DEBUG (leer la hoja, setear
     // secretos, WhatsApp, OCR, reset, fixlog) Y los SYNC* van detrás de ADMIN_SECRET — `test:true`
