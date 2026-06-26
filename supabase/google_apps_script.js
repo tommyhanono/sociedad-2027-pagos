@@ -213,13 +213,14 @@ function greenApiSend(method, options, attempts) {
   return false
 }
 
-function sendWhatsApp(message) {
+function sendWhatsApp(message, attempts) {
   return greenApiSend('sendMessage',
     { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-      payload: JSON.stringify({ chatId: WA_CHAT_ID, message: message }) })
+      payload: JSON.stringify({ chatId: WA_CHAT_ID, message: message }) }, attempts)
 }
 
-function sendWhatsAppWithImage(caption, imageUrl) {
+// Devuelve true si ALGO se entregó (archivo o, en su defecto, texto + URL). false si todo falló.
+function sendWhatsAppWithImage(caption, imageUrl, attempts) {
   try {
     const fileId = extractDriveId(imageUrl)
 
@@ -232,23 +233,91 @@ function sendWhatsAppWithImage(caption, imageUrl) {
     } else {
       // URL pública (Supabase Storage, etc.) → fetch directo
       const resp = UrlFetchApp.fetch(imageUrl, { muteHttpExceptions: true })
-      if (resp.getResponseCode() !== 200) { sendWhatsApp(caption + '\n🧾 ' + imageUrl); return }
+      if (resp.getResponseCode() !== 200) { return sendWhatsApp(caption + '\n🧾 ' + imageUrl, attempts) }
       blob = resp.getBlob()
       ext  = imageUrl.toLowerCase().includes('.png') ? 'png'
            : imageUrl.toLowerCase().includes('.pdf') ? 'pdf' : 'jpg'
     }
 
     // Green API sendFileByUpload (multipart) CON REINTENTOS — la instancia flapea, así que un envío
-    // puede fallar y el siguiente entrar. Si tras los reintentos el archivo no entró, caemos al
-    // texto + URL (también con reintentos) para que Marce SIEMPRE reciba el aviso del pago.
+    // puede fallar y el siguiente entrar. Si tras los reintentos el archivo no entró, caemos al texto + URL.
     const okFile = greenApiSend('sendFileByUpload',
       { method: 'post', muteHttpExceptions: true,
-        payload: { chatId: WA_CHAT_ID, caption: caption, fileName: 'comprobante.' + ext, file: blob } })
-    if (!okFile) { sendWhatsApp(caption + '\n🧾 ' + imageUrl) }
+        payload: { chatId: WA_CHAT_ID, caption: caption, fileName: 'comprobante.' + ext, file: blob } }, attempts)
+    if (okFile) return true
+    return sendWhatsApp(caption + '\n🧾 ' + imageUrl, attempts)
   } catch (e) {
     // Si falla por cualquier razón, manda el texto solo
-    sendWhatsApp(caption + '\n🧾 ' + imageUrl)
+    return sendWhatsApp(caption + '\n🧾 ' + imageUrl, attempts)
   }
+}
+
+// ── ENTREGA GARANTIZADA del aviso a Marce (100%): cola durable + reintento automático + email ──
+// Si el envío a Marce falla (instancia Green caída/flapeando), el aviso se guarda en Script Properties
+// y el trigger time-driven flushAvisos (cada 5 min) lo reintenta HASTA que entra → nada se pierde, aunque
+// Green esté caído horas. Si está configurado MARCE_EMAIL, además manda un email instantáneo de respaldo
+// (canal confiable de Google, independiente de Green) cuando WhatsApp falla.
+const AVISO_PREFIX = 'aviso_'
+
+function enqueueAviso(id, caption, imageUrl) {
+  try {
+    const key = AVISO_PREFIX + (id || (new Date().getTime() + '_' + Math.round(Math.random() * 1e9)))
+    PropertiesService.getScriptProperties().setProperty(key,
+      JSON.stringify({ caption: caption, imageUrl: imageUrl || '', ts: new Date().getTime() }))
+  } catch (e) {}
+}
+
+// Email de respaldo a Marce (independiente de Green). No-op si no hay MARCE_EMAIL en Script Properties.
+function notifyEmailIfConfigured(caption, imageUrl) {
+  try {
+    const to = PropertiesService.getScriptProperties().getProperty('MARCE_EMAIL')
+    if (!to) return false
+    MailApp.sendEmail({ to: to, subject: 'Sociedad 2027 — nuevo pago',
+      body: caption + (imageUrl ? '\n\nComprobante: ' + imageUrl : '') })
+    return true
+  } catch (e) { return false }
+}
+
+// Vacía la cola de avisos (1 intento por aviso; el trigger corre seguido = la cadencia de reintento).
+// Lo dispara el trigger time-driven; también se puede correr a mano desde el editor.
+function flushAvisos() {
+  const props = PropertiesService.getScriptProperties()
+  // Mutex liviano POR PROPIEDAD — NO usa el lock de pagos, para que vaciar la cola nunca bloquee un cobro.
+  const busy = props.getProperty('flush_busy')
+  const now = new Date().getTime()
+  if (busy && (now - Number(busy)) < 4 * 60 * 1000) return          // otra corrida en curso (<4 min)
+  props.setProperty('flush_busy', String(now))
+  try {
+    const all = props.getProperties()
+    let n = 0
+    for (const key in all) {
+      if (key.indexOf(AVISO_PREFIX) !== 0) continue
+      if (n >= 20) break                                             // tope por corrida; el resto al próximo flush
+      n++
+      let item
+      try { item = JSON.parse(all[key]) } catch (e) { props.deleteProperty(key); continue }
+      const ok = item.imageUrl ? sendWhatsAppWithImage(item.caption, item.imageUrl, 1)
+                               : sendWhatsApp(item.caption, 1)
+      if (ok) {
+        props.deleteProperty(key)                                    // entregado → fuera de la cola
+      } else if (now - (item.ts || 0) > 3 * 24 * 3600 * 1000) {
+        // >3 días sin poder entregar: la instancia está muerta (no flapeando). Avisar por email y soltar.
+        notifyEmailIfConfigured('[No se pudo entregar por WhatsApp tras 3 días]\n' + item.caption, item.imageUrl)
+        props.deleteProperty(key)
+      }
+      // si falla y es reciente: queda en cola para el próximo flush
+    }
+  } finally { props.deleteProperty('flush_busy') }
+}
+
+// Crear/asegurar el trigger time-driven que vacía la cola. Correr UNA vez (editor → Run, o webhook SETUPAVISOS).
+function setupAvisosTrigger() {
+  const existing = ScriptApp.getProjectTriggers()
+  for (let i = 0; i < existing.length; i++) {
+    if (existing[i].getHandlerFunction() === 'flushAvisos') ScriptApp.deleteTrigger(existing[i])
+  }
+  ScriptApp.newTrigger('flushAvisos').timeBased().everyMinutes(5).create()
+  return 'OK: trigger flushAvisos creado (cada 5 min)'
 }
 
 // ── OCR del comprobante (advisory) ────────────────────────────
@@ -617,6 +686,11 @@ function doPost(e) {
     const adminSecret = PropertiesService.getScriptProperties().getProperty('ADMIN_SECRET')
     const isAdmin = !!adminSecret && payload.admin === adminSecret
     // Bootstrap de una sola vez: setea ADMIN_SECRET solo si todavía no existe (luego queda bloqueado).
+    // Crear el trigger time-driven que vacía la cola de avisos (entrega garantizada a Marce).
+    if (payload.type === 'SETUPAVISOS') {
+      if (!isAdmin) return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
+      return ContentService.createTextOutput(setupAvisosTrigger()).setMimeType(ContentService.MimeType.TEXT)
+    }
     if (payload.type === 'SETADMIN' && payload.secret) {
       if (adminSecret) return ContentService.createTextOutput('ADMIN_SECRET ya configurado').setMimeType(ContentService.MimeType.TEXT)
       PropertiesService.getScriptProperties().setProperty('ADMIN_SECRET', String(payload.secret))
@@ -1081,10 +1155,14 @@ function doPost(e) {
       // detecte recibos repetidos de un vistazo. ocrInfo es '' si no hay key/falla.
       waCaption += ocrInfo
 
-      if (row.comprobante_url) {
-        sendWhatsAppWithImage(waCaption, row.comprobante_url)
-      } else {
-        sendWhatsApp(waCaption)
+      // Aviso a Marce con ENTREGA GARANTIZADA: intento directo (con reintentos); si NO entra, lo encolo
+      // (el trigger flushAvisos lo reintenta hasta entregarlo) y mando email de respaldo instantáneo.
+      const okAviso = row.comprobante_url
+        ? sendWhatsAppWithImage(waCaption, row.comprobante_url)
+        : sendWhatsApp(waCaption)
+      if (!okAviso) {
+        enqueueAviso(row.id, waCaption, row.comprobante_url || '')
+        notifyEmailIfConfigured(waCaption, row.comprobante_url || '')
       }
 
       // Resultado a Supabase (para el saldo del form)
