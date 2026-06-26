@@ -201,6 +201,19 @@ function extractCompHash(url) {
 // Envía por Green API con REINTENTOS. La instancia flapea (starting↔authorized): un envío puede
 // fallar y el siguiente (~1.5s después) entrar en una ventana "authorized". Éxito = HTTP 200; NO
 // reintenta en 200 → sin riesgo de mensajes duplicados. Devuelve true si entró.
+// AUTO-REBOOT de la instancia de Green cuando los envíos fallan (se cayó/flapea). Green tarda ~1-2 min
+// en volver; la cola de avisos entrega lo pendiente apenas reconecta. Cooldown de 5 min para no rebootear
+// de más (un reboot ya en curso no se repite). Endpoint GET /reboot. Usa external_request (ya autorizado).
+function rebootGreenIfStale() {
+  try {
+    const props = PropertiesService.getScriptProperties()
+    const now = new Date().getTime()
+    if (now - Number(props.getProperty('last_reboot') || 0) < 5 * 60 * 1000) return  // rebooteamos hace <5 min
+    props.setProperty('last_reboot', String(now))
+    UrlFetchApp.fetch('https://api.green-api.com/waInstance' + WA_INSTANCE + '/reboot/' + WA_TOKEN, { muteHttpExceptions: true })
+  } catch (e) {}
+}
+
 function greenApiSend(method, options, attempts) {
   const n = attempts || 3
   for (let i = 0; i < n; i++) {
@@ -210,6 +223,7 @@ function greenApiSend(method, options, attempts) {
     } catch (e) {}
     if (i < n - 1) Utilities.sleep(1500)
   }
+  rebootGreenIfStale()   // todos los intentos fallaron → la instancia está caída → reboot automático (cooldown)
   return false
 }
 
@@ -1175,19 +1189,17 @@ function doPost(e) {
       // detecte recibos repetidos de un vistazo. ocrInfo es '' si no hay key/falla.
       waCaption += ocrInfo
 
-      // Aviso a Marce con ENTREGA GARANTIZADA por WhatsApp: intento directo (con reintentos); si NO entra,
-      // lo encolo y el trigger flushAvisos lo reintenta por WhatsApp hasta entregarlo (no se pierde).
+      // Aviso a Marce por WhatsApp: intento directo (con reintentos + auto-reboot si la instancia cayó).
+      // Si NO entra: lo encolo (se reintenta solo en cada actividad del webhook hasta entregarlo) Y,
+      // worst-case, lo mando por email de respaldo a sociedad.2027@gmail.com. Así nunca se pierde.
       const okAviso = row.comprobante_url
         ? sendWhatsAppWithImage(waCaption, row.comprobante_url)
         : sendWhatsApp(waCaption)
       if (!okAviso) {
         enqueueAviso(row.id, waCaption, row.comprobante_url || '')
+        emailComprobante('Comprobante — ' + (matchResult.matched || submitted || 'pago') + ' — B/.' + monto,
+          waCaption, row.comprobante_url || '')
       }
-
-      // Archivo por email: TODO comprobante queda guardado en sociedad.2027@gmail.com (canal confiable,
-      // con el comprobante adjunto). Independiente de WhatsApp/Green → no se pierde ninguno.
-      emailComprobante('Comprobante — ' + (matchResult.matched || submitted || 'pago') + ' — B/.' + monto,
-        waCaption, row.comprobante_url || '')
 
       // Resultado a Supabase (para el saldo del form)
       let resultObj
