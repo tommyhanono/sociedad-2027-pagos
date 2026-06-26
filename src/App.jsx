@@ -27,14 +27,16 @@ export default function App() {
     let cancelled = false
     ;(async () => {
       try {
-        const { data } = await supabase.rpc('ver_saldo_con_token', { p_token: token })
+        const { data, error } = await supabase.rpc('ver_saldo_con_token', { p_token: token })
         if (!cancelled && data && data.ok) {
           setSesion({ nombre: data.nombre, nombreCompleto: data.nombre_completo, meses: parseMeses(data.meses), token })
           setScreen('months')
-        } else if (!cancelled) {
+        } else if (!cancelled && !error && data && data.ok === false) {
+          // Olvidamos el token SOLO si la sesión está genuinamente vencida/inválida (ok:false explícito).
+          // Si fue un error transitorio (error != null, o data null) NO lo borramos → el "recordame" sobrevive.
           localStorage.removeItem(TOKEN_KEY)
         }
-      } catch (e) { /* sin conexión: queda en verificación */ }
+      } catch (e) { /* sin conexión: queda en verificación, token intacto */ }
       if (!cancelled) setRestoring(false)
     })()
     return () => { cancelled = true }
