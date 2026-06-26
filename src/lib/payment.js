@@ -55,10 +55,10 @@ export async function processFile(file) {
 export function friendlyError(err) {
   const msg = String(err?.message || err || '').toLowerCase()
   if (!navigator.onLine || msg.includes('failed to fetch') || msg.includes('network'))
-    return 'Parece que no tenés conexión a internet. Conectate e intentá de nuevo.'
+    return 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'
   if (msg.includes('payload') || msg.includes('large') || msg.includes('size') || msg.includes('exceeded'))
-    return 'La foto es muy pesada. Probá con una más liviana o con una captura de pantalla.'
+    return 'La foto es muy pesada. Pruebe con una más liviana o con una captura de pantalla.'
   if (msg.includes('duplicate') || msg.includes('already exists'))
-    return 'Parece que este comprobante ya fue enviado. Revisá el grupo o intentá de nuevo.'
-  return 'No pudimos enviar tu comprobante. Revisá tu conexión e intentá de nuevo. Si sigue, escribile al tesorero por WhatsApp.'
+    return 'Parece que este comprobante ya fue enviado. Revise el grupo o intente de nuevo.'
+  return 'No pudimos enviar su comprobante. Revise su conexión e intente de nuevo. Si sigue, escríbale al tesorero por WhatsApp.'
 }

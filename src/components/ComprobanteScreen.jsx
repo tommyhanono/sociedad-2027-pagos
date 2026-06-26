@@ -19,7 +19,7 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
     const f = e.target.files[0]
     if (!f) return
     if (f.size > MAX_FILE_MB * 1024 * 1024) {
-      setError(`La foto es muy pesada (máx. ${MAX_FILE_MB} MB). Probá con una captura de pantalla.`)
+      setError(`La foto es muy pesada (máx. ${MAX_FILE_MB} MB). Pruebe con una captura de pantalla.`)
       if (fileRef.current) fileRef.current.value = ''
       return
     }
@@ -30,7 +30,7 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       try { hash = await sha256Hex(f) } catch (e) {}
       setFile({ ...processed, hash })
     } catch (err) {
-      setError('No pudimos leer ese archivo. Probá con una foto o una captura de pantalla.')
+      setError('No pudimos leer ese archivo. Pruebe con una foto o una captura de pantalla.')
     } finally { setFileProcessing(false) }
   }
 
@@ -42,8 +42,8 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
 
   async function handleSubmit() {
     if (loading || submittingRef.current) return
-    if (!file) { setError('Subí la foto del comprobante.'); return }
-    if (!navigator.onLine) { setError('Parece que no tenés conexión a internet. Conectate e intentá de nuevo.'); return }
+    if (!file) { setError('Suba la foto del comprobante.'); return }
+    if (!navigator.onLine) { setError('Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'); return }
     submittingRef.current = true; setLoading(true); setError('')
     try {
       if (!attemptIdRef.current) {
@@ -91,8 +91,8 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>← Volver</button>
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>Subí tu comprobante</h1>
-        <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Una foto o captura del comprobante de tu transferencia.</p>
+        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>Suba su comprobante</h1>
+        <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Una foto o captura del comprobante de su transferencia.</p>
       </header>
 
       {/* Resumen del pago */}
@@ -108,7 +108,7 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       {fileProcessing ? (
         <div style={{ width: '100%', borderRadius: 'var(--r-xl)', border: '2px dashed var(--border-strong)', background: 'var(--cream-050)', padding: '32px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 26, height: 26, borderRadius: '50%', border: '3px solid var(--border-strong)', borderTopColor: 'var(--brand)', display: 'inline-block', animation: 'spin360 .8s linear infinite' }} />
-          <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-body)', fontFamily: 'var(--font-body)' }}>Procesando tu foto…</p>
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-body)', fontFamily: 'var(--font-body)' }}>Procesando su foto…</p>
         </div>
       ) : !file ? (
         <button type="button" onClick={() => fileRef.current?.click()}
@@ -120,7 +120,7 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
             </svg>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--text-body)', fontFamily: 'var(--font-body)' }}>Tocá aquí para subir tu comprobante</p>
+            <p style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--text-body)', fontFamily: 'var(--font-body)' }}>Toque aquí para subir su comprobante</p>
             <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>Foto o captura de pantalla</p>
           </div>
         </button>

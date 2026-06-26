@@ -794,9 +794,9 @@ function doPost(e) {
       const destino = GLOBAL_TEST_MODE ? TEST_PHONE : String(payload.telefono || '').replace(/\D/g, '')
       if (!destino) return ContentService.createTextOutput('sin destino').setMimeType(ContentService.MimeType.TEXT)
       const msg = '🔐 *Sociedad 2027 — Pagos*\n\n' +
-                  'Tu código de verificación es:  *' + payload.codigo + '*\n\n' +
-                  'Sirve para ver el saldo de tu hijo/a y poder pagar. Vence en 10 minutos.\n\n' +
-                  '⚙️ Mensaje automático, enviado por inteligencia artificial. No respondas a este chat.'
+                  'Su código de verificación es:  *' + payload.codigo + '*\n\n' +
+                  'Sirve para ver el saldo de su hijo/a y poder pagar. Vence en 10 minutos.\n\n' +
+                  '⚙️ Mensaje automático, enviado por inteligencia artificial. No responda a este chat.'
       // Envío del código CON reintentos + auto-reboot (igual que el comprobante): si Green está caído,
       // reintenta y dispara el reboot de la instancia, para que el código de verificación también llegue.
       const okOtp = sendWhatsAppTo(destino + '@c.us', msg)

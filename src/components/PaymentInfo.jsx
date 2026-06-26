@@ -46,13 +46,13 @@ export default function PaymentInfo({ onNext, onBack, alumnoDisplay = '', monto 
       <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>← Volver a los meses</button>
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>Hacé tu transferencia</h1>
-        <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Transferí por ACH a esta cuenta y después subí el comprobante.</p>
+        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>Haga su transferencia</h1>
+        <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Transfiera por ACH a esta cuenta y después suba el comprobante.</p>
       </header>
 
       {/* Cuánto transferir (sale de los meses elegidos) */}
       <div style={{ borderRadius: 'var(--r-xl)', padding: '20px 22px', background: 'var(--grad-gold)', boxShadow: 'var(--shadow-gold)', textAlign: 'center' }}>
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-on-gold)', opacity: 0.85, fontFamily: 'var(--font-body)' }}>Tenés que transferir</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-on-gold)', opacity: 0.85, fontFamily: 'var(--font-body)' }}>Tiene que transferir</p>
         <p style={{ margin: '4px 0 0', fontSize: 'var(--text-4xl, 40px)', fontWeight: 800, color: 'var(--text-on-gold)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>B/. {monto}</p>
         {mesesFull.length > 0 && (
           <p style={{ margin: '8px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-on-gold)', opacity: 0.9, fontFamily: 'var(--font-body)' }}>

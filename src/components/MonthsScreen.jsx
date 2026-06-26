@@ -20,7 +20,7 @@ export default function MonthsScreen({ alumnoDisplay = '', mesesPagados = [], in
   const total = meses.length * CUOTA
 
   function continuar() {
-    if (!meses.length) { setError('Tocá al menos un mes que vas a pagar.'); return }
+    if (!meses.length) { setError('Toque al menos un mes que va a pagar.'); return }
     const ordered   = MONTHS.filter(m => meses.includes(m))          // orden cronológico
     const mesesFull = ordered.map(m => MONTHS_FULL[m])
     const mesLabel  = mesesFull.map(n => `${n} ${CUOTA_YEAR}`).join(', ')
@@ -36,15 +36,15 @@ export default function MonthsScreen({ alumnoDisplay = '', mesesPagados = [], in
         <div>
           <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--success-700,#15803d)', fontFamily: 'var(--font-body)' }}>✓ Verificado · {alumnoDisplay}</p>
           <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 700, color: saldoPendiente === 0 ? 'var(--success-700,#15803d)' : 'var(--pending-700,#a16207)', fontFamily: 'var(--font-body)' }}>
-            {saldoPendiente === 0 ? '¡Está al día! 🎉' : `Debés B/. ${saldoPendiente} (${mesesPendientes} ${mesesPendientes === 1 ? 'mes' : 'meses'})`}
+            {saldoPendiente === 0 ? '¡Está al día! 🎉' : `Debe B/. ${saldoPendiente} (${mesesPendientes} ${mesesPendientes === 1 ? 'mes' : 'meses'})`}
           </p>
         </div>
         {onSalir && <button type="button" onClick={onSalir} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>Salir</button>}
       </div>
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>¿Qué vas a pagar?</h1>
-        <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Tocá los meses que vas a pagar. <strong style={{ color: 'var(--success-700,#15803d)' }}>Verde</strong> = ya pagado.</p>
+        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>¿Qué va a pagar?</h1>
+        <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Toque los meses que va a pagar. <strong style={{ color: 'var(--success-700,#15803d)' }}>Verde</strong> = ya pagado.</p>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -75,7 +75,7 @@ export default function MonthsScreen({ alumnoDisplay = '', mesesPagados = [], in
       {/* Total en vivo */}
       <div style={{ borderRadius: 'var(--r-md)', padding: '16px 18px', background: meses.length ? 'var(--grad-navy-card)' : 'var(--cream-050,#faf8f3)', border: meses.length ? 'none' : '1px solid var(--border-soft,#e8e3d8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: meses.length ? 'var(--text-on-navy)' : 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
-          {meses.length ? `${meses.length} ${meses.length === 1 ? 'mes' : 'meses'}: ${meses.map(m => MONTHS_FULL[m]).join(', ')}` : 'Tocá los meses arriba'}
+          {meses.length ? `${meses.length} ${meses.length === 1 ? 'mes' : 'meses'}: ${meses.map(m => MONTHS_FULL[m]).join(', ')}` : 'Toque los meses arriba'}
         </span>
         <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: meses.length ? 'var(--gold-400)' : 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>B/. {total}</span>
       </div>

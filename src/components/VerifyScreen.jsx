@@ -32,34 +32,34 @@ export default function VerifyScreen({ onVerified }) {
 
   async function enviarCodigo() {
     const n = (nombre || janij).trim()
-    if (n.length < 2) { setError('Escribí el nombre de tu hijo/a y elegilo de la lista.'); return }
+    if (n.length < 2) { setError('Escriba el nombre de su hijo/a y elíjalo de la lista.'); return }
     setLoading(true); setError('')
     try {
       const { data, error: e } = await supabase.rpc('solicitar_codigo', { p_nombre: n })
       if (e) throw e
       if (data && data.ok) { setNombre(n); setCodigo(''); setStep('codigo') }
-      else if (data && data.error === 'no_habilitado') setError('Este alumno todavía no está habilitado. Escribile al tesorero por WhatsApp.')
-      else if (data && data.error === 'no_encontrado') setError('No encontramos ese alumno. Revisá el nombre y elegilo de la lista que aparece.')
-      else if (data && data.error === 'espera') { setError('Ya te enviamos un código hace un momento. Revisá tu WhatsApp.'); setStep('codigo') }
-      else setError('No pudimos enviar el código. Intentá de nuevo.')
+      else if (data && data.error === 'no_habilitado') setError('Este alumno todavía no está habilitado. Escríbale al tesorero por WhatsApp.')
+      else if (data && data.error === 'no_encontrado') setError('No encontramos ese alumno. Revise el nombre y elíjalo de la lista que aparece.')
+      else if (data && data.error === 'espera') { setError('Ya le enviamos un código hace un momento. Revise su WhatsApp.'); setStep('codigo') }
+      else setError('No pudimos enviar el código. Intente de nuevo.')
     } catch (err) {
-      setError('No pudimos enviar el código. Revisá tu conexión a internet e intentá de nuevo.')
+      setError('No pudimos enviar el código. Revise su conexión a internet e intente de nuevo.')
     } finally { setLoading(false) }
   }
 
   async function verificar() {
     const c = codigo.trim()
-    if (!/^\d{4}$/.test(c)) { setError('Escribí los 4 números del código.'); return }
+    if (!/^\d{4}$/.test(c)) { setError('Escriba los 4 números del código.'); return }
     setLoading(true); setError('')
     try {
       const { data, error: e } = await supabase.rpc('verificar_codigo', { p_nombre: nombre, p_codigo: c })
       if (e) throw e
       if (data && data.ok) onVerified({ nombre: data.nombre, nombre_completo: data.nombre_completo, meses: data.meses, token: data.token })
-      else if (data && data.error === 'incorrecto') setError(`Código incorrecto. Te ${data.restantes === 1 ? 'queda' : 'quedan'} ${data.restantes} ${data.restantes === 1 ? 'intento' : 'intentos'}.`)
-      else if (data && data.error === 'vencido') setError('El código venció o se agotaron los intentos. Volvé a pedir uno nuevo.')
-      else setError('No pudimos verificar el código. Intentá de nuevo.')
+      else if (data && data.error === 'incorrecto') setError(`Código incorrecto. Le ${data.restantes === 1 ? 'queda' : 'quedan'} ${data.restantes} ${data.restantes === 1 ? 'intento' : 'intentos'}.`)
+      else if (data && data.error === 'vencido') setError('El código venció o se agotaron los intentos. Vuelva a pedir uno nuevo.')
+      else setError('No pudimos verificar el código. Intente de nuevo.')
     } catch (err) {
-      setError('No pudimos verificar el código. Revisá tu conexión a internet.')
+      setError('No pudimos verificar el código. Revise su conexión a internet.')
     } finally { setLoading(false) }
   }
 
@@ -83,19 +83,19 @@ export default function VerifyScreen({ onVerified }) {
           <span style={{ fontSize: 'var(--text-md)', fontWeight: 800, color: 'var(--navy-300)', fontFamily: 'var(--font-display)' }}>ב״ה</span>
         </div>
         <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>
-          Verificá tu identidad
+          Verifique su identidad
         </h1>
       </header>
 
       {/* Explicación simple para las mamás */}
       <div style={{ borderRadius: 'var(--r-md)', padding: '16px 18px', background: 'var(--gold-050)', border: '1px solid var(--gold-100)' }}>
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: '#92400E', lineHeight: 1.6, fontFamily: 'var(--font-body)' }}>
-          Para cuidar la información de cada familia, primero verificamos que seas tú. Es rápido:
+          Para cuidar la información de cada familia, primero verificamos que sea usted. Es rápido:
         </p>
         <ol style={{ margin: '10px 0 0', paddingLeft: 20, fontSize: 'var(--text-sm)', color: '#92400E', lineHeight: 1.7, fontFamily: 'var(--font-body)' }}>
-          <li>Escribí el nombre de tu hijo/a y elegilo de la lista.</li>
-          <li>Te enviamos un código de 4 números por WhatsApp.</li>
-          <li>Escribilo acá y listo: vas a ver tu saldo y vas a poder pagar.</li>
+          <li>Escriba el nombre de su hijo/a y elíjalo de la lista.</li>
+          <li>Le enviamos un código de 4 números por WhatsApp.</li>
+          <li>Escríbalo aquí y listo: verá su saldo y podrá pagar.</li>
         </ol>
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-xs)', color: '#92400E', lineHeight: 1.6, fontFamily: 'var(--font-body)' }}>
           📲 El código llega del número <strong>{NUM_DISPLAY}</strong>. Es <strong>automático</strong> (lo envía el sistema). Solo lo recibe el WhatsApp registrado de la familia.
@@ -108,7 +108,7 @@ export default function VerifyScreen({ onVerified }) {
             <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Nombre del alumno o alumna</label>
             <div style={{ position: 'relative' }}>
               <input type="text" value={janij} inputMode="text" autoComplete="off" maxLength={60}
-                onChange={e => onNombreChange(e.target.value)} placeholder="Escribí aquí el nombre"
+                onChange={e => onNombreChange(e.target.value)} placeholder="Escriba aquí el nombre"
                 style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)'; setTimeout(() => setSugerencias([]), 150) }} />
@@ -134,11 +134,11 @@ export default function VerifyScreen({ onVerified }) {
         <>
           <div style={{ borderRadius: 'var(--r-md)', padding: '14px 16px', background: 'var(--success-100,#dcfce7)', border: '1px solid #bbf7d0' }}>
             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--success-700,#15803d)', fontWeight: 700, fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
-              ✅ Te enviamos un código por WhatsApp{nombre ? ' para ' + nombre : ''}. Llega del {NUM_DISPLAY}. Revisá tu WhatsApp.
+              ✅ Le enviamos un código por WhatsApp{nombre ? ' para ' + nombre : ''}. Llega del {NUM_DISPLAY}. Revise su WhatsApp.
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Escribí el código de 4 números</label>
+            <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Escriba el código de 4 números</label>
             <input type="text" value={codigo} inputMode="numeric" autoComplete="one-time-code" maxLength={4}
               onChange={e => { setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4)); setError('') }}
               placeholder="0000"
