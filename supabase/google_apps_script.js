@@ -56,9 +56,9 @@ function _waProp(key, fallback) {
 }
 const WA_INSTANCE  = _waProp('WA_INSTANCE', '7107661922')
 const WA_TOKEN     = _waProp('WA_TOKEN', '7fe84dc2b26d4bc598f4967ddf97e3ec9518892fe5984bd3ba')
-const WA_CHAT_ID   = '50766797887@c.us'
+const WA_CHAT_ID   = _waProp('WA_CHAT_ID', '50766797887@c.us')   // a quién llega el comprobante (Marcela). Cambiable vía Script Property / SETDEST.
 // En modo test, los códigos OTP van SIEMPRE a este número (el del dueño), no al de la familia.
-const TEST_PHONE   = '50766818669'
+const TEST_PHONE   = _waProp('TEST_PHONE', '50766818669')   // a dónde van OTP/preview en modo test. Cambiable vía Script Property / SETDEST.
 
 // ── Supabase (para devolver el saldo real al form) ────────────
 // El webhook escribe el resultado en la columna `estado` de la fila recién insertada.
@@ -227,10 +227,32 @@ function greenApiSend(method, options, attempts) {
   return false
 }
 
-function sendWhatsApp(message, attempts) {
+// Envía a un chatId ARBITRARIO con reintentos + auto-reboot (vía greenApiSend). Lo usan el OTP y el broadcast.
+function sendWhatsAppTo(chatId, message, attempts) {
   return greenApiSend('sendMessage',
     { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-      payload: JSON.stringify({ chatId: WA_CHAT_ID, message: message }) }, attempts)
+      payload: JSON.stringify({ chatId: chatId, message: message }) }, attempts)
+}
+
+// Aviso a Marce (WA_CHAT_ID) — atajo de sendWhatsAppTo (mismo blindaje que todo lo demás).
+function sendWhatsApp(message, attempts) {
+  return sendWhatsAppTo(WA_CHAT_ID, message, attempts)
+}
+
+// Teléfonos de las familias para el BROADCAST. Llama a la RPC security-definer `telefonos_para_broadcast`
+// en Supabase (se crea con el PAT al lanzar). Devuelve [] si la RPC todavía no existe → broadcast no-op.
+function obtenerTelefonosBroadcast() {
+  try {
+    const sec = PropertiesService.getScriptProperties().getProperty('ALUMNOS_SECRET') || ''
+    const r = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/rpc/telefonos_para_broadcast',
+      { method: 'post', contentType: 'application/json',
+        headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+        payload: JSON.stringify({ p_secret: sec }), muteHttpExceptions: true })
+    if (r.getResponseCode() !== 200) return []
+    const arr = JSON.parse(r.getContentText())
+    if (!Array.isArray(arr)) return []
+    return arr.map(function (x) { return String((x && x.telefono) || x || '').replace(/\D/g, '') }).filter(Boolean)
+  } catch (e) { return [] }
 }
 
 // Devuelve true si ALGO se entregó (archivo o, en su defecto, texto + URL). false si todo falló.
@@ -725,6 +747,35 @@ function doPost(e) {
       if (!isAdmin) return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
       return ContentService.createTextOutput(setupAvisosTrigger()).setMimeType(ContentService.MimeType.TEXT)
     }
+    // SETDEST — cambiar a quién llegan los mensajes SIN re-deploy. { type:'SETDEST', admin, wa_chat_id?, test_phone? }
+    if (payload.type === 'SETDEST') {
+      if (!isAdmin) return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
+      const pp = PropertiesService.getScriptProperties()
+      const out = []
+      if (payload.wa_chat_id) { pp.setProperty('WA_CHAT_ID', String(payload.wa_chat_id)); out.push('WA_CHAT_ID=' + payload.wa_chat_id) }
+      if (payload.test_phone) { pp.setProperty('TEST_PHONE', String(payload.test_phone)); out.push('TEST_PHONE=' + payload.test_phone) }
+      return ContentService.createTextOutput('[SETDEST] ' + (out.join(' · ') || 'nada que setear') + ' (toma efecto en el próximo mensaje)').setMimeType(ContentService.MimeType.TEXT)
+    }
+
+    // BROADCAST — mensaje a TODAS las familias (solo al lanzar). En MODO TEST va SOLO a TEST_PHONE (preview),
+    // nunca a las familias. En producción usa los teléfonos reales. { type:'BROADCAST', admin, message }
+    if (payload.type === 'BROADCAST') {
+      if (!isAdmin) return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
+      const bmsg = String(payload.message || '')
+      if (!bmsg) return ContentService.createTextOutput('sin mensaje').setMimeType(ContentService.MimeType.TEXT)
+      if (GLOBAL_TEST_MODE) {
+        sendWhatsAppTo(TEST_PHONE + '@c.us', '🧪 [PREVIEW BROADCAST — en producción esto va a las 51 familias]\n\n' + bmsg)
+        return ContentService.createTextOutput('[BROADCAST test] preview enviado a TEST_PHONE (NO a las familias, seguimos en test)').setMimeType(ContentService.MimeType.TEXT)
+      }
+      const phones = obtenerTelefonosBroadcast()
+      let nb = 0
+      for (let bi = 0; bi < phones.length; bi++) {
+        if (sendWhatsAppTo(phones[bi] + '@c.us', bmsg)) nb++
+        Utilities.sleep(1500)   // espaciar para no topar el rate-limit de Green
+      }
+      return ContentService.createTextOutput('[BROADCAST] enviado a ' + nb + '/' + phones.length + ' familias').setMimeType(ContentService.MimeType.TEXT)
+    }
+
     if (payload.type === 'SETADMIN' && payload.secret) {
       if (adminSecret) return ContentService.createTextOutput('ADMIN_SECRET ya configurado').setMimeType(ContentService.MimeType.TEXT)
       PropertiesService.getScriptProperties().setProperty('ADMIN_SECRET', String(payload.secret))
@@ -746,12 +797,10 @@ function doPost(e) {
                   'Tu código de verificación es:  *' + payload.codigo + '*\n\n' +
                   'Sirve para ver el saldo de tu hijo/a y poder pagar. Vence en 10 minutos.\n\n' +
                   '⚙️ Mensaje automático, enviado por inteligencia artificial. No respondas a este chat.'
-      try {
-        UrlFetchApp.fetch('https://api.green-api.com/waInstance' + WA_INSTANCE + '/sendMessage/' + WA_TOKEN,
-          { method: 'post', contentType: 'application/json',
-            payload: JSON.stringify({ chatId: destino + '@c.us', message: msg }), muteHttpExceptions: true })
-      } catch (e) {}
-      return ContentService.createTextOutput('[SENDOTP] enviado').setMimeType(ContentService.MimeType.TEXT)
+      // Envío del código CON reintentos + auto-reboot (igual que el comprobante): si Green está caído,
+      // reintenta y dispara el reboot de la instancia, para que el código de verificación también llegue.
+      const okOtp = sendWhatsAppTo(destino + '@c.us', msg)
+      return ContentService.createTextOutput('[SENDOTP] ' + (okOtp ? 'enviado' : 'falló — instancia caída, se disparó reboot')).setMimeType(ContentService.MimeType.TEXT)
     }
 
     // Reparar cabeceras duplicadas del log
