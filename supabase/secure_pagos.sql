@@ -17,15 +17,25 @@
 --   4) recién entonces el candado (enable RLS + revoke)
 
 -- ── 1) RPCs ─────────────────────────────────────────────────────────────────
-create or replace function public.crear_pago(p_janij text, p_monto numeric, p_mes text, p_comprobante_url text)
+-- crear_pago GATEADO por token OTP (2026-06-28): exige p_token de una sesión OTP válida cuyo nombre
+-- coincida con p_janij, + valida el rango del monto. Sin esto, cualquiera con la anon key (pública)
+-- registraba pagos falsos a nombre de cualquier alumno. El overload de 4 args (sin token) FUE DROPEADO
+-- una vez que el front (Vercel + GitHub Pages) pasó a llamar esta versión de 5 args con sesion.token.
+create or replace function public.crear_pago(p_janij text, p_monto numeric, p_mes text, p_comprobante_url text, p_token text)
 returns uuid language plpgsql security definer set search_path to 'public' as $fn$
-declare v_id uuid;
+declare v_id uuid; v_nom text; v_exp timestamptz;
 begin
+  select nombre, expira into v_nom, v_exp from otp_sesiones where token = p_token;
+  if v_nom is null or v_exp < now() then raise exception 'sesion_invalida'; end if;
+  if lower(btrim(v_nom)) <> lower(btrim(p_janij)) then raise exception 'sesion_no_coincide'; end if;
+  if p_monto is null or p_monto <= 0 or p_monto > 5000 then raise exception 'monto_invalido'; end if;
   insert into public.pagos(janij, monto, mes, comprobante_url)
   values (btrim(p_janij), p_monto, p_mes, p_comprobante_url)
   returning id into v_id;
   return v_id;
 end; $fn$;
+-- Cerrar la vía sin token (tras desplegar el front nuevo):
+--   drop function if exists public.crear_pago(text, numeric, text, text);
 
 create or replace function public.pago_estado(p_id uuid)
 returns text language sql security definer set search_path to 'public' as $fn$

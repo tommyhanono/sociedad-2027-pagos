@@ -1017,6 +1017,14 @@ function doPost(e) {
       return ContentService.createTextOutput('skipped').setMimeType(ContentService.MimeType.TEXT)
     }
 
+    // El INSERT (pago) lo dispara el trigger de Supabase, que manda el ALUMNOS_SECRET. Sin el secreto
+    // correcto NO se procesa: cierra el POST directo de pagos falsos al webhook (defensa en profundidad,
+    // además del gating de crear_pago). Fail-open si la property no existe, para no romper pagos legítimos.
+    const _insSec = PropertiesService.getScriptProperties().getProperty('ALUMNOS_SECRET')
+    if (_insSec && payload.secret !== _insSec) {
+      return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
+    }
+
     const isTest  = GLOBAL_TEST_MODE || payload.test === true
     const tabName = isTest ? TEST_TAB : MATRIX_TAB
     const row     = payload.record

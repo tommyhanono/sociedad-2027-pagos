@@ -14,9 +14,13 @@ declare
   webhook_url text := '<PEGAR_URL_DEL_WEBHOOK>';  -- https://script.google.com/macros/s/<ID>/exec
   payload jsonb;
 begin
+  -- 'secret' (2026-06-28): el handler INSERT del webhook exige el ALUMNOS_SECRET para procesar,
+  -- así un POST directo al webhook no puede inyectar pagos falsos. Valor real en el vault / Script
+  -- Properties (mismo ALUMNOS_SECRET), NO versionado acá.
   payload := jsonb_build_object(
     'type',   TG_OP,
-    'record', row_to_json(NEW)::jsonb
+    'record', row_to_json(NEW)::jsonb,
+    'secret', '<ALUMNOS_SECRET>'
   );
 
   -- timeout_milliseconds:30000 because Apps Script cold starts can take 10-15s

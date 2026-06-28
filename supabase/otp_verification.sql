@@ -40,10 +40,14 @@ language sql security definer set search_path to 'public' as $fn$
   order by coalesce(a.nombre_completo, a.nombre) limit 10;
 $fn$;
 
--- solicitar_codigo: resuelve el input por nombre del sistema O nombre completo
+-- solicitar_codigo: resuelve el input por nombre del sistema O nombre completo.
+-- Tope diario anti-spam (2026-06-28): además del throttle de 45s, máx 15 códigos/día por alumno
+-- (corta el spam de WhatsApp a las familias reales y el gasto de cuota de Green en producción).
+alter table public.otp_codigos add column if not exists envios_dia int not null default 0;
+alter table public.otp_codigos add column if not exists dia date;
 create or replace function public.solicitar_codigo(p_nombre text)
 returns jsonb language plpgsql security definer set search_path to 'public' as $fn$
-declare v_nom text; v_tel text; v_codigo text; v_prev timestamptz;
+declare v_nom text; v_tel text; v_codigo text; v_prev timestamptz; v_envios int; v_dia date;
   v_url text := '<WEBHOOK_URL>';
   v_secret text := '<ALUMNOS_SECRET>';
 begin
@@ -51,12 +55,15 @@ begin
     where lower(nombre) = lower(btrim(p_nombre)) or lower(nombre_completo) = lower(btrim(p_nombre)) limit 1;
   if v_nom is null then return jsonb_build_object('ok', false, 'error', 'no_encontrado'); end if;
   if v_tel is null then return jsonb_build_object('ok', false, 'error', 'no_habilitado'); end if;
-  select creado into v_prev from otp_codigos where nombre = v_nom;
+  select creado, envios_dia, dia into v_prev, v_envios, v_dia from otp_codigos where nombre = v_nom;
   if v_prev is not null and v_prev > now() - interval '45 seconds' then return jsonb_build_object('ok', false, 'error', 'espera'); end if;
+  if v_dia is distinct from current_date then v_envios := 0; end if;
+  if coalesce(v_envios,0) >= 15 then return jsonb_build_object('ok', false, 'error', 'limite_diario'); end if;
   v_codigo := lpad(((floor(random()*9000))::int + 1000)::text, 4, '0');
-  insert into otp_codigos(nombre, codigo, expira, intentos, creado)
-    values (v_nom, v_codigo, now() + interval '10 minutes', 0, now())
-    on conflict (nombre) do update set codigo=excluded.codigo, expira=excluded.expira, intentos=0, creado=now();
+  insert into otp_codigos(nombre, codigo, expira, intentos, creado, envios_dia, dia)
+    values (v_nom, v_codigo, now() + interval '10 minutes', 0, now(), coalesce(v_envios,0)+1, current_date)
+    on conflict (nombre) do update set codigo=excluded.codigo, expira=excluded.expira, intentos=0, creado=now(),
+      envios_dia=excluded.envios_dia, dia=excluded.dia;
   perform net.http_post(url := v_url,
     body := jsonb_build_object('type','SENDOTP','telefono',v_tel,'codigo',v_codigo,'secret',v_secret),
     headers := '{"Content-Type":"application/json"}'::jsonb, timeout_milliseconds := 30000);
