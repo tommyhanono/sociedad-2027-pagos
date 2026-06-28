@@ -754,6 +754,7 @@ function doPost(e) {
       const out = []
       if (payload.wa_chat_id) { pp.setProperty('WA_CHAT_ID', String(payload.wa_chat_id)); out.push('WA_CHAT_ID=' + payload.wa_chat_id) }
       if (payload.test_phone) { pp.setProperty('TEST_PHONE', String(payload.test_phone)); out.push('TEST_PHONE=' + payload.test_phone) }
+      if (payload.test_whitelist !== undefined) { pp.setProperty('TEST_WHITELIST', String(payload.test_whitelist)); out.push('TEST_WHITELIST=[' + payload.test_whitelist + ']') }
       return ContentService.createTextOutput('[SETDEST] ' + (out.join(' · ') || 'nada que setear') + ' (toma efecto en el próximo mensaje)').setMimeType(ContentService.MimeType.TEXT)
     }
 
@@ -791,7 +792,11 @@ function doPost(e) {
     if (payload.type === 'SENDOTP') {
       const sec = PropertiesService.getScriptProperties().getProperty('ALUMNOS_SECRET')
       if (!sec || payload.secret !== sec) return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
-      const destino = GLOBAL_TEST_MODE ? TEST_PHONE : String(payload.telefono || '').replace(/\D/g, '')
+      // En MODO TEST los códigos van a TEST_PHONE (tu teléfono), EXCEPTO los teléfonos en TEST_WHITELIST:
+      // a esas familias (ej. Margie) les llega su código REAL, para empezar a probar con mamás de verdad.
+      const realTel = String(payload.telefono || '').replace(/\D/g, '')
+      const wl = (_waProp('TEST_WHITELIST', '') || '').replace(/\s/g, '').split(',').filter(Boolean)
+      const destino = GLOBAL_TEST_MODE ? (wl.indexOf(realTel) >= 0 ? realTel : TEST_PHONE) : realTel
       if (!destino) return ContentService.createTextOutput('sin destino').setMimeType(ContentService.MimeType.TEXT)
       const msg = '🔐 *Sociedad 2027 — Pagos*\n\n' +
                   'Su código de verificación es:  *' + payload.codigo + '*\n\n' +
