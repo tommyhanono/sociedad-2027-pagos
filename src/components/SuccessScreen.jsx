@@ -84,7 +84,7 @@ function SaldoRow({ state }) {
       <div style={{ ...baseRow, background: 'var(--cream-050,#faf8f3)' }}>
         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>Saldo</span>
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-body)', fontFamily: 'var(--font-body)', textAlign: 'right', maxWidth: '62%' }}>
-          Registrando su pago — se lo confirmaremos por el grupo
+          Registrando su pago — se lo confirmaremos en breve
         </span>
       </div>
     )
@@ -146,7 +146,7 @@ export default function SuccessScreen({ data, onReset }) {
           ¡Comprobante recibido!
         </h1>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-          ¡Gracias! 🙏 Lo revisaremos y le confirmaremos por el grupo.
+          ¡Gracias! 🙏 Lo revisaremos y se lo confirmaremos en breve.
         </p>
       </div>
 

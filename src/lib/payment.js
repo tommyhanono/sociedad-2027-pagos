@@ -59,6 +59,6 @@ export function friendlyError(err) {
   if (msg.includes('payload') || msg.includes('large') || msg.includes('size') || msg.includes('exceeded'))
     return 'La foto es muy pesada. Pruebe con una más liviana o con una captura de pantalla.'
   if (msg.includes('duplicate') || msg.includes('already exists'))
-    return 'Parece que este comprobante ya fue enviado. Revise el grupo o intente de nuevo.'
+    return 'Parece que este comprobante ya fue enviado. Intente de nuevo o escríbale al tesorero.'
   return 'No pudimos enviar su comprobante. Revise su conexión e intente de nuevo. Si sigue, escríbale al tesorero por WhatsApp.'
 }
