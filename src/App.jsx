@@ -83,7 +83,8 @@ export default function App() {
 
       {screen === 'comprobante' && sesion && pago && (
         <ComprobanteScreen alumno={sesion.nombre} alumnoDisplay={alumnoDisplay} monto={pago.monto}
-          mesesFull={pago.mesesFull} mesLabel={pago.mesLabel} onSuccess={handleSuccess} onBack={() => setScreen('info')} />
+          mesesFull={pago.mesesFull} mesLabel={pago.mesLabel} token={sesion.token}
+          onSuccess={handleSuccess} onBack={() => setScreen('info')} />
       )}
 
       {screen === 'success' && <SuccessScreen data={successData} onReset={handleReset} />}

@@ -5,7 +5,7 @@ import StepBar from './StepBar'
 
 // PASO 3 — Subir comprobante. El alumno, el monto y los meses YA vienen elegidos (no se escribe nada).
 // OJO: la lógica de subida + hash (dedup) + crear_pago es IDÉNTICA a la de antes — solo cambió de lugar.
-export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', monto = 0, mesesFull = [], mesLabel = '', onSuccess, onBack }) {
+export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', monto = 0, mesesFull = [], mesLabel = '', token = '', onSuccess, onBack }) {
   const [file, setFile] = useState(null)
   const [fileProcessing, setFileProcessing] = useState(false)
   const [previewBroken, setPreviewBroken] = useState(false)
@@ -64,8 +64,11 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       const montoFinal = Math.round(monto * 100) / 100
 
       let nuevoPagoId = null
+      // p_token: liga el pago a la sesión OTP verificada de ESTE alumno (la RPC valida que el token
+      // exista, no esté vencido y el nombre coincida). Sin esto cualquiera con la anon key crearía
+      // pagos falsos. El front siempre tiene un token válido (recién verificó o lo restauró recordarme).
       const crearRpc = await supabase.rpc('crear_pago', {
-        p_janij: alumno.trim(), p_monto: montoFinal, p_mes: mesLabel, p_comprobante_url: comprobante_url,
+        p_janij: alumno.trim(), p_monto: montoFinal, p_mes: mesLabel, p_comprobante_url: comprobante_url, p_token: token,
       })
       if (!crearRpc.error && crearRpc.data) {
         nuevoPagoId = crearRpc.data

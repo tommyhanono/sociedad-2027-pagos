@@ -41,6 +41,7 @@ export default function VerifyScreen({ onVerified }) {
       else if (data && data.error === 'no_habilitado') setError('Este alumno todavía no está habilitado. Escríbale al tesorero por WhatsApp.')
       else if (data && data.error === 'no_encontrado') setError('No encontramos ese alumno. Revise el nombre y elíjalo de la lista que aparece.')
       else if (data && data.error === 'espera') { setError('Ya le enviamos un código hace un momento. Revise su WhatsApp.'); setStep('codigo') }
+      else if (data && data.error === 'limite_diario') setError('Pidió demasiados códigos hoy. Espere un momento o escríbale al tesorero por WhatsApp.')
       else setError('No pudimos enviar el código. Intente de nuevo.')
     } catch (err) {
       setError('No pudimos enviar el código. Revise su conexión a internet e intente de nuevo.')
