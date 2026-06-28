@@ -98,7 +98,15 @@ export default function VerifyScreen({ onVerified }) {
           <li>Escríbalo aquí y listo: verá su saldo y podrá pagar.</li>
         </ol>
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-xs)', color: '#92400E', lineHeight: 1.6, fontFamily: 'var(--font-body)' }}>
-          📲 El código llega del número <strong>{NUM_DISPLAY}</strong>. Es <strong>automático</strong> (lo envía el sistema). Solo lo recibe el WhatsApp registrado de la familia.
+          📲 El código llega del número <strong>{NUM_DISPLAY}</strong> y es <strong>automático</strong> (lo envía el sistema).
+        </p>
+      </div>
+
+      {/* DISCLAIMER de privacidad — cada código va SOLO al número registrado de esa mamá */}
+      <div style={{ borderRadius: 'var(--r-md)', padding: '14px 16px', background: '#fff', border: '2px solid var(--gold-400)', boxShadow: 'var(--shadow-xs)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 20, lineHeight: 1.2, flexShrink: 0 }}>🔒</span>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-strong)', lineHeight: 1.55, fontFamily: 'var(--font-body)' }}>
+          El código de verificación llega <strong>únicamente al número de WhatsApp que cada familia tiene registrado</strong>. Cada mamá recibe su propio código en su propio número; así nadie más puede ver la información de su hijo/a.
         </p>
       </div>
 
