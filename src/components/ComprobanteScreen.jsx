@@ -54,9 +54,10 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       const hashPrefix  = file.hash ? `${file.hash}__` : ''
       const filename    = `${hashPrefix}${attemptIdRef.current}-${safeName}.${file.ext}`
       const contentType = file.kind === 'pdf' ? 'application/pdf' : 'image/jpeg'
-      // upsert:true → si la mamá reintenta tras un fallo posterior (crear_pago), el upload del MISMO
-      // archivo (filename determinístico por intento) sobreescribe en vez de tirar 409 y dejarla trabada.
-      const { error: uploadError } = await supabase.storage.from('comprobantes').upload(filename, file.uploadFile, { contentType, upsert: true })
+      // INSERT plano (sin upsert): el bucket solo permite INSERT anónimo, NO SELECT, así que upsert:true
+      // daría 403 ("row-level security"). En un reintento se resetea attemptIdRef en el catch, de modo que
+      // el reintento genera un filename nuevo y no choca con un 409.
+      const { error: uploadError } = await supabase.storage.from('comprobantes').upload(filename, file.uploadFile, { contentType })
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('comprobantes').getPublicUrl(filename)
       const comprobante_url = urlData.publicUrl
@@ -79,6 +80,9 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       onSuccess({ janij: alumnoDisplay || alumno, monto: montoFinal, mes: mesLabel, comprobante_url, pagoId: nuevoPagoId })
     } catch (err) {
       console.error(err)
+      // Sin upsert, un reintento del MISMO attemptId chocaría con 409 si el upload ya había pasado.
+      // Reseteando attemptIdRef el reintento usa un filename nuevo y sube limpio.
+      attemptIdRef.current = null
       setError(friendlyError(err))
     } finally {
       setLoading(false); submittingRef.current = false
