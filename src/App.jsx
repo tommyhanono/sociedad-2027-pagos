@@ -103,7 +103,7 @@ export default function App() {
           onSuccess={handleSuccess} onBack={() => setScreen('info')} />
       )}
 
-      {screen === 'success' && <SuccessScreen data={successData} onReset={handleReset} />}
+      {screen === 'success' && <SuccessScreen data={successData} token={sesion?.token} onReset={handleReset} />}
     </div>
   )
 }

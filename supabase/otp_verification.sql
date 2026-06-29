@@ -61,8 +61,8 @@ begin
   select creado, envios_dia, dia into v_prev, v_envios, v_dia from otp_codigos where nombre = v_nom;
   if v_prev is not null and v_prev > now() - interval '45 seconds' then return jsonb_build_object('ok', false, 'error', 'espera'); end if;
   if v_dia is distinct from v_hoy then v_envios := 0; end if;
-  if coalesce(v_envios,0) >= 15 then return jsonb_build_object('ok', false, 'error', 'limite_diario'); end if;
-  v_codigo := lpad(((floor(random()*9000))::int + 1000)::text, 4, '0');
+  if coalesce(v_envios,0) >= 8 then return jsonb_build_object('ok', false, 'error', 'limite_diario'); end if;
+  v_codigo := lpad((floor(random()*10000))::int::text, 4, '0');  -- keyspace completo 0000-9999
   insert into otp_codigos(nombre, codigo, expira, intentos, creado, envios_dia, dia)
     values (v_nom, v_codigo, now() + interval '10 minutes', 0, now(), coalesce(v_envios,0)+1, v_hoy)
     on conflict (nombre) do update set codigo=excluded.codigo, expira=excluded.expira, intentos=0, creado=now(),

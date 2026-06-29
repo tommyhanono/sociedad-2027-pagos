@@ -11,7 +11,8 @@ const confettiPieces = [
   { l: '92%', c: '#F5A623', d: '.34s',  s: 8 },
 ]
 
-const WA_NUMBER = '50766818669'
+// Número de la TESORERA (Marcela) al que la mamá puede avisar (opcional). Configurable por env.
+const WA_NUMBER = import.meta.env.VITE_WA_TESORERA || '50766797887'
 
 function buildWaUrl(janij, monto, mes, comprobante_url) {
   const msg = [
@@ -27,7 +28,7 @@ function buildWaUrl(janij, monto, mes, comprobante_url) {
 
 // Polling del saldo real: el webhook escribe el resultado (con saldo del sheet) en
 // la columna `estado` de Supabase. Acá lo leemos hasta que aparezca (máx ~24s, cubre cold start).
-function useSaldo(pagoId) {
+function useSaldo(pagoId, token) {
   const [state, setState] = useState({ status: pagoId ? 'loading' : 'timeout' })
   useEffect(() => {
     if (!pagoId) return
@@ -36,16 +37,11 @@ function useSaldo(pagoId) {
       if (cancelled) return
       tries++
       try {
-        // Lee SOLO el estado del pago propio por id. Vía RPC `pago_estado` (security definer) para
-        // que la tabla `pagos` quede cerrada al público; con fallback al read directo por si la RPC
-        // todavía no está desplegada (transición). Ver supabase/secure_pagos.sql.
+        // Lee SOLO el estado del pago propio por id, vía RPC `pago_estado` GATEADA por el token de
+        // sesión (solo el alumno del pago puede leerlo; la tabla `pagos` queda cerrada al público).
         let estado = null
-        const viaRpc = await supabase.rpc('pago_estado', { p_id: pagoId })
+        const viaRpc = await supabase.rpc('pago_estado', { p_id: pagoId, p_token: token })
         if (!viaRpc.error && viaRpc.data != null) estado = viaRpc.data
-        if (estado == null) {
-          const { data } = await supabase.from('pagos').select('estado').eq('id', pagoId).single()
-          estado = data?.estado ?? null
-        }
         if (estado && estado !== 'pendiente') {
           let parsed = null
           try { parsed = JSON.parse(estado) } catch (e) {}
@@ -58,7 +54,7 @@ function useSaldo(pagoId) {
     }
     const t = setTimeout(poll, 800)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [pagoId])
+  }, [pagoId, token])
   return state
 }
 
@@ -115,10 +111,10 @@ function SaldoRow({ state }) {
   )
 }
 
-export default function SuccessScreen({ data, onReset }) {
+export default function SuccessScreen({ data, token = '', onReset }) {
   const { janij = '', monto = 0, mes = '', comprobante_url, pagoId } = data || {}
   const waUrl = buildWaUrl(janij, monto, mes, comprobante_url)
-  const saldoState = useSaldo(pagoId)
+  const saldoState = useSaldo(pagoId, token)
   const [imgBroken, setImgBroken] = useState(false)
 
   return (

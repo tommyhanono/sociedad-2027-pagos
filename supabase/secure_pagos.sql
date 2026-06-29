@@ -37,10 +37,23 @@ end; $fn$;
 -- Cerrar la vía sin token (tras desplegar el front nuevo):
 --   drop function if exists public.crear_pago(text, numeric, text, text);
 
-create or replace function public.pago_estado(p_id uuid)
-returns text language sql security definer set search_path to 'public' as $fn$
-  select estado from public.pagos where id = p_id;
-$fn$;
+-- pago_estado GATEADO por token (2026-06-28): el front (SuccessScreen) lo poll-ea con el id del pago
+-- + el token de sesión. Sin el token correcto (cuyo nombre coincida con el alumno del pago) → excepción.
+-- Cierra el IDOR donde, con solo el UUID, anon leía nombre/monto/saldo de un pago. (El overload viejo de
+-- 1 arg se dropeó tras desplegar el front nuevo.)
+create or replace function public.pago_estado(p_id uuid, p_token text)
+returns text language plpgsql security definer set search_path to 'public' as $fn$
+declare v_estado text; v_janij text; v_nom text; v_exp timestamptz;
+begin
+  select estado, janij into v_estado, v_janij from pagos where id = p_id;
+  if not found then return null; end if;
+  select nombre, expira into v_nom, v_exp from otp_sesiones where token = p_token;
+  if v_nom is null or v_exp < now() or lower(btrim(v_nom)) <> lower(btrim(coalesce(v_janij,''))) then
+    raise exception 'no_autorizado';
+  end if;
+  return v_estado;
+end; $fn$;
+-- Cerrar el overload sin token (tras desplegar el front nuevo): drop function if exists public.pago_estado(uuid);
 
 -- El secreto NO se versiona (placeholder). Valor real en el vault (~/.keys-vault) y en
 -- Script Properties del webhook (ALUMNOS_SECRET) — el mismo que usa set_meses_pagados.

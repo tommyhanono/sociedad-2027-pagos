@@ -75,7 +75,9 @@ export default function MonthsScreen({ alumnoDisplay = '', mesesPagados = [], in
       {/* Total en vivo */}
       <div style={{ borderRadius: 'var(--r-md)', padding: '16px 18px', background: meses.length ? 'var(--grad-navy-card)' : 'var(--cream-050,#faf8f3)', border: meses.length ? 'none' : '1px solid var(--border-soft,#e8e3d8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: meses.length ? 'var(--text-on-navy)' : 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
-          {meses.length ? `${meses.length} ${meses.length === 1 ? 'mes' : 'meses'}: ${meses.map(m => MONTHS_FULL[m]).join(', ')}` : 'Toque los meses arriba'}
+          {meses.length
+            ? `${meses.length} ${meses.length === 1 ? 'mes' : 'meses'}: ${MONTHS.filter(m => meses.includes(m)).map(m => MONTHS_FULL[m]).join(', ')}`
+            : (mesesPendientes === 0 ? '🎉 Ya pagó todos los meses del año' : 'Toque los meses arriba')}
         </span>
         <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: meses.length ? 'var(--gold-400)' : 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>B/. {total}</span>
       </div>

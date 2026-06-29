@@ -41,7 +41,7 @@ export default function VerifyScreen({ onVerified }) {
       if (data && data.ok) { setNombre(n); setCodigo(''); setStep('codigo') }
       else if (data && data.error === 'no_habilitado') setError('Este alumno todavía no está habilitado. Escríbale al tesorero por WhatsApp.')
       else if (data && data.error === 'no_encontrado') setError('No encontramos ese alumno. Revise el nombre y elíjalo de la lista que aparece.')
-      else if (data && data.error === 'espera') { setInfo('Su código anterior sigue activo — revíselo en su WhatsApp. Puede volver a pedir otro en un momento.'); setStep('codigo') }
+      else if (data && data.error === 'espera') { setNombre(n); setCodigo(''); setInfo('Su código anterior sigue activo — revíselo en su WhatsApp. Puede volver a pedir otro en un momento.'); setStep('codigo') }
       else if (data && data.error === 'limite_diario') setError('Pidió demasiados códigos hoy. Espere un momento o escríbale al tesorero por WhatsApp.')
       else setError('No pudimos enviar el código. Intente de nuevo.')
     } catch (err) {
@@ -57,7 +57,7 @@ export default function VerifyScreen({ onVerified }) {
       const { data, error: e } = await supabase.rpc('verificar_codigo', { p_nombre: nombre, p_codigo: c })
       if (e) throw e
       if (data && data.ok) onVerified({ nombre: data.nombre, nombre_completo: data.nombre_completo, meses: data.meses, token: data.token })
-      else if (data && data.error === 'incorrecto') setError(`Código incorrecto. Le ${data.restantes === 1 ? 'queda' : 'quedan'} ${data.restantes} ${data.restantes === 1 ? 'intento' : 'intentos'}.`)
+      else if (data && data.error === 'incorrecto') setError(data.restantes === 0 ? 'Código incorrecto. Se agotaron los intentos. Vuelva a pedir un código nuevo.' : `Código incorrecto. Le ${data.restantes === 1 ? 'queda' : 'quedan'} ${data.restantes} ${data.restantes === 1 ? 'intento' : 'intentos'}.`)
       else if (data && data.error === 'vencido') setError('El código venció o se agotaron los intentos. Vuelva a pedir uno nuevo.')
       else setError('No pudimos verificar el código. Intente de nuevo.')
     } catch (err) {

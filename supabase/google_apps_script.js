@@ -845,14 +845,14 @@ function doPost(e) {
           const r = UrlFetchApp.fetch(
             'https://api.green-api.com/waInstance' + WA_INSTANCE + '/sendFileByUpload/' + WA_TOKEN,
             { method: 'post', muteHttpExceptions: true,
-              payload: { chatId: WA_CHAT_ID, caption: 'TEST imagen', fileName: 'comprobante.jpg', file: blob } }
+              payload: { chatId: avisoDest(), caption: 'TEST imagen', fileName: 'comprobante.jpg', file: blob } }
           )
           result += 'upload=' + r.getResponseCode() + ' ' + r.getContentText()
         } else {
           const r = UrlFetchApp.fetch(
             'https://api.green-api.com/waInstance' + WA_INSTANCE + '/sendMessage/' + WA_TOKEN,
             { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-              payload: JSON.stringify({ chatId: WA_CHAT_ID, message: 'TEST texto directo desde Apps Script' }) }
+              payload: JSON.stringify({ chatId: avisoDest(), message: 'TEST texto directo desde Apps Script' }) }
           )
           result += 'text=' + r.getResponseCode() + ' ' + r.getContentText()
         }
@@ -1049,6 +1049,11 @@ function doPost(e) {
     // Guard: record ausente / no-objeto (payload malformado) — no es un pago procesable
     if (!row || typeof row !== 'object' || Array.isArray(row)) {
       return ContentService.createTextOutput('error: record ausente o inválido').setMimeType(ContentService.MimeType.TEXT)
+    }
+    // Guard: sin id de Supabase no hay clave de idempotencia → un reintento duplicaría el pago. El
+    // trigger legítimo SIEMPRE manda el id (PK), así que sin id rechazamos (no procesar sin dedup).
+    if (!row.id) {
+      return ContentService.createTextOutput('error: record sin id (idempotencia)').setMimeType(ContentService.MimeType.TEXT)
     }
 
     // Idempotencia: dedup por id de Supabase (NO por nombre+monto: una mamá puede pagar igual 2 veces)

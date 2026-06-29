@@ -59,11 +59,15 @@ export function friendlyError(err) {
     return 'Su sesión venció. Vuelva a la pantalla de inicio y verifíquese de nuevo para poder pagar.'
   if (msg.includes('monto_invalido'))
     return 'Hubo un problema con el monto del pago. Vuelva a elegir los meses e intente de nuevo.'
-  if (!navigator.onLine || msg.includes('failed to fetch') || msg.includes('network'))
+  // Señales de red GENUINAS primero; el chequeo de navigator.onLine (que puede ser poco fiable) va al
+  // final, para no tapar errores específicos (foto pesada, duplicado) que sí llegaron al servidor.
+  if (msg.includes('failed to fetch') || msg.includes('network'))
     return 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'
   if (msg.includes('payload') || msg.includes('large') || msg.includes('size') || msg.includes('exceeded'))
     return 'La foto es muy pesada. Pruebe con una más liviana o con una captura de pantalla.'
   if (msg.includes('duplicate') || msg.includes('already exists'))
     return 'Parece que este comprobante ya fue enviado. Intente de nuevo o escríbale al tesorero.'
+  if (!navigator.onLine)
+    return 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'
   return 'No pudimos enviar su comprobante. Revise su conexión e intente de nuevo. Si sigue, escríbale al tesorero por WhatsApp.'
 }
