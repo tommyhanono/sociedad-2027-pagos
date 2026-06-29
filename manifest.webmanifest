@@ -1,0 +1,14 @@
+{
+  "name": "Sociedad 2027 · Pagos",
+  "short_name": "Pagos 2027",
+  "description": "Pago de mensualidades — Promoción 2027",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F0F4F8",
+  "theme_color": "#1A3A6B",
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
+  ]
+}
