@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { MAX_FILE_MB, processFile, sha256Hex, friendlyError } from '../lib/payment'
 import StepBar from './StepBar'
@@ -14,6 +14,9 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
   const fileRef = useRef()
   const submittingRef = useRef(false)
   const attemptIdRef = useRef(null)
+
+  // Revoca el blob URL del preview al re-elegir archivo o al desmontar (evita fuga de object URLs).
+  useEffect(() => () => { if (file?.previewUrl) { try { URL.revokeObjectURL(file.previewUrl) } catch (e) {} } }, [file])
 
   async function handleFile(e) {
     const f = e.target.files[0]

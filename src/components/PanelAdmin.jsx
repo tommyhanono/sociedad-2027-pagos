@@ -23,6 +23,7 @@ export default function PanelAdmin() {
       const { data: d, error: err } = await supabase.rpc('panel_admin', { p_secret: pass.trim() })
       if (err) throw err
       if (d && d.ok) setData(d.alumnos || [])
+      else if (d && d.error === 'bloqueado') setError('Demasiados intentos. Espere unos minutos e intente de nuevo.')
       else setError('Contraseña incorrecta.')
     } catch (e) {
       console.error(e)
@@ -36,7 +37,7 @@ export default function PanelAdmin() {
       const meses = [...new Set((a.meses || '').split(',').map(s => s.trim()).filter(Boolean))]
       const pagado = Math.min(meses.length, 11) * CUOTA
       const saldo = Math.max(0, TOTAL_ANUAL - pagado)
-      return { id: a.id || a.nombre, nombre: a.nombre, tel: a.tel || '', nMeses: meses.length, pagado, saldo, alDia: saldo === 0 }
+      return { id: a.id || a.nombre, nombre: a.nombre, tel: a.tel || '', nMeses: Math.min(meses.length, 11), pagado, saldo, alDia: saldo === 0 }
     })
     const filtered = q.trim()
       ? rows.filter(r => r.nombre.toLowerCase().includes(q.trim().toLowerCase()))
@@ -141,7 +142,7 @@ export default function PanelAdmin() {
         {filas.length === 0 && <div style={{ padding: 18, textAlign: 'center', color: '#889' }}>Sin resultados.</div>}
       </div>
       <p style={{ fontSize: 11.5, color: '#aab', textAlign: 'center', marginTop: 16 }}>
-        Datos del cuadro de mensualidades. Solo lectura.
+        Saldo calculado por meses completos pagados. Para pagos parciales, consulte el cuadro. Solo lectura.
       </p>
     </div>
   )

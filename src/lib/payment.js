@@ -65,6 +65,8 @@ export function friendlyError(err) {
     return 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'
   if (msg.includes('payload') || msg.includes('large') || msg.includes('size') || msg.includes('exceeded'))
     return 'La foto es muy pesada. Pruebe con una más liviana o con una captura de pantalla.'
+  if (msg.includes('mime') || msg.includes('not supported') || msg.includes('invalid_mime'))
+    return 'Suba una foto o un PDF del comprobante (no otro tipo de archivo).'
   if (msg.includes('duplicate') || msg.includes('already exists'))
     return 'Parece que este comprobante ya fue enviado. Intente de nuevo o escríbale al tesorero.'
   if (!navigator.onLine)

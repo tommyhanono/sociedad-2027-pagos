@@ -45,7 +45,7 @@ export default function VerifyScreen({ onVerified }) {
       else if (data && data.error === 'limite_diario') setError('Pidió demasiados códigos hoy. Espere un momento o escríbale al tesorero por WhatsApp.')
       else setError('No pudimos enviar el código. Intente de nuevo.')
     } catch (err) {
-      setError('No pudimos enviar el código. Revise su conexión a internet e intente de nuevo.')
+      setError(navigator.onLine ? 'No pudimos enviar el código. Intente de nuevo en un momento.' : 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.')
     } finally { setLoading(false) }
   }
 
@@ -61,7 +61,7 @@ export default function VerifyScreen({ onVerified }) {
       else if (data && data.error === 'vencido') setError('El código venció o se agotaron los intentos. Vuelva a pedir uno nuevo.')
       else setError('No pudimos verificar el código. Intente de nuevo.')
     } catch (err) {
-      setError('No pudimos verificar el código. Revise su conexión a internet.')
+      setError(navigator.onLine ? 'No pudimos verificar el código. Intente de nuevo en un momento.' : 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.')
     } finally { setLoading(false) }
   }
 
@@ -144,9 +144,11 @@ export default function VerifyScreen({ onVerified }) {
 
       {step === 'codigo' && (
         <>
-          <div style={{ borderRadius: 'var(--r-md)', padding: '14px 16px', background: 'var(--success-100,#dcfce7)', border: '1px solid #bbf7d0' }}>
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--success-700,#15803d)', fontWeight: 700, fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
-              ✅ Le enviamos un código por WhatsApp{nombre ? ' para ' + nombre : ''}. Llega del {NUM_DISPLAY}. Revise su WhatsApp.
+          <div style={{ borderRadius: 'var(--r-md)', padding: '14px 16px', background: info ? 'var(--cream-050,#faf8f3)' : 'var(--success-100,#dcfce7)', border: info ? '1px solid var(--border-soft,#e8e3d8)' : '1px solid #bbf7d0' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: info ? 'var(--text-body,#374151)' : 'var(--success-700,#15803d)', fontWeight: 700, fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+              {info
+                ? `↻ Use el código que ya le enviamos a su WhatsApp${janij ? ' (' + janij + ')' : ''}. Llega del ${NUM_DISPLAY}.`
+                : `✅ Le enviamos un código por WhatsApp${janij ? ' para ' + janij : ''}. Llega del ${NUM_DISPLAY}. Revise su WhatsApp.`}
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -159,7 +161,6 @@ export default function VerifyScreen({ onVerified }) {
               onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)' }} />
           </div>
-          {info && <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted, #6b7280)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{info}</p>}
           {error && <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--error-500)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{error}</p>}
           <button type="button" onClick={verificar} disabled={loading || codigo.length < 4} style={cta(loading || codigo.length < 4)}>
             {loading && spinner}{loading ? 'Verificando…' : 'Verificar y continuar'}
