@@ -28,7 +28,7 @@ begin
   select nombre, expira into v_nom, v_exp from otp_sesiones where token = p_token;
   if v_nom is null or v_exp < now() then raise exception 'sesion_invalida'; end if;
   if lower(btrim(v_nom)) <> lower(btrim(p_janij)) then raise exception 'sesion_no_coincide'; end if;
-  if p_monto is null or p_monto <= 0 or p_monto > 5000 then raise exception 'monto_invalido'; end if;
+  if p_monto is null or p_monto < 0.01 or p_monto > 5000 then raise exception 'monto_invalido'; end if;
   insert into public.pagos(janij, monto, mes, comprobante_url)
   values (btrim(p_janij), p_monto, p_mes, p_comprobante_url)
   returning id into v_id;
@@ -59,6 +59,16 @@ end; $fn$;
 alter table public.pagos enable row level security;
 revoke select, insert, update, delete, truncate, references, trigger on public.pagos from anon;
 drop policy if exists allow_anon_insert on public.pagos;  -- queda moot al revocar el grant
+
+-- ── Hardening 2026-06-28: cerrar grants DML latentes en alumnos y pagos ──────
+-- alumnos tenía RLS ON pero conservaba grants SELECT/INSERT/UPDATE/DELETE/TRUNCATE para anon y
+-- authenticated (solo lo salvaba la ausencia de policy). pagos conservaba grants para authenticated +
+-- una policy allow_authenticated_insert. Se revoca todo (acceso solo por RPCs security-definer) para
+-- que la seguridad no dependa de la ausencia de policy. NO rompe: el front nunca hace .from('alumnos')
+-- ni .from('pagos') (solo .rpc), y el webhook escribe vía set_meses_pagados (con ALUMNOS_SECRET).
+revoke select, insert, update, delete, truncate, references, trigger on public.alumnos from anon, authenticated;
+revoke select, insert, update, delete, truncate, references, trigger on public.pagos   from authenticated;
+drop policy if exists allow_authenticated_insert on public.pagos;
 
 -- ── Verificación ─────────────────────────────────────────────────────────────
 -- Con la anon key, sobre /rest/v1/pagos: SELECT/INSERT/UPDATE/DELETE -> "permission denied".

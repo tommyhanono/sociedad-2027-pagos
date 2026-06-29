@@ -58,7 +58,17 @@ export default function App() {
   }
   function handleMonthsContinue(p) { setPago(p); setScreen('info') }
   function handleSuccess(data) { setSuccessData(data); setScreen('success') }
-  function handleReset() { setSuccessData(null); setPago(null); setScreen('months') }
+  async function handleReset() {
+    setSuccessData(null); setPago(null); setScreen('months')
+    // Tras pagar, refrescar los meses pagados para que el mes recién pagado salga en verde/bloqueado
+    // (evita que la mamá lo re-pague). Best-effort: si falla, se mantiene el estado actual.
+    try {
+      if (sesion?.token) {
+        const { data } = await supabase.rpc('ver_saldo_con_token', { p_token: sesion.token })
+        if (data && data.ok) setSesion(s => (s ? { ...s, meses: parseMeses(data.meses) } : s))
+      }
+    } catch (e) { /* fail-open: no romper el flujo si el refresh falla */ }
+  }
 
   const shell = { width: '100%', maxWidth: 'var(--app-max-w)', margin: '0 auto', padding: '8px var(--app-pad-x) 40px', minHeight: '100vh' }
   const alumnoDisplay = sesion ? (sesion.nombreCompleto || sesion.nombre) : ''

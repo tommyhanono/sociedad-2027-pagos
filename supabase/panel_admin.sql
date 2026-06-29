@@ -13,6 +13,7 @@ begin
   return jsonb_build_object('ok', true, 'alumnos', (
     select coalesce(jsonb_agg(x order by x->>'nombre'), '[]'::jsonb) from (
       select jsonb_build_object(
+        'id',     nombre,
         'nombre', coalesce(nombre_completo, nombre),
         'meses',  coalesce(meses_pagados, ''),
         'tel',    coalesce(telefono, '')

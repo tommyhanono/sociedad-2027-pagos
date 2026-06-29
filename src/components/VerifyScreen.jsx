@@ -13,13 +13,14 @@ export default function VerifyScreen({ onVerified }) {
   const [codigo, setCodigo] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError]   = useState('')
+  const [info, setInfo]     = useState('')   // mensaje NEUTRO (no error), ej. "su código sigue activo"
   const sugTimer = useRef(null)
 
   function onNombreChange(val) {
     setJanij(val); setNombre(''); setError('')
     if (sugTimer.current) clearTimeout(sugTimer.current)
     const q = val.trim()
-    if (q.length < 2) { setSugerencias([]); return }
+    if (q.length < 3) { setSugerencias([]); return }
     sugTimer.current = setTimeout(async () => {
       try {
         const { data } = await supabase.rpc('buscar_alumnos', { q })
@@ -33,14 +34,14 @@ export default function VerifyScreen({ onVerified }) {
   async function enviarCodigo() {
     const n = (nombre || janij).trim()
     if (n.length < 2) { setError('Escriba el nombre de su hijo/a y elíjalo de la lista.'); return }
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setInfo('')
     try {
       const { data, error: e } = await supabase.rpc('solicitar_codigo', { p_nombre: n })
       if (e) throw e
       if (data && data.ok) { setNombre(n); setCodigo(''); setStep('codigo') }
       else if (data && data.error === 'no_habilitado') setError('Este alumno todavía no está habilitado. Escríbale al tesorero por WhatsApp.')
       else if (data && data.error === 'no_encontrado') setError('No encontramos ese alumno. Revise el nombre y elíjalo de la lista que aparece.')
-      else if (data && data.error === 'espera') { setError('Ya le enviamos un código hace un momento. Revise su WhatsApp.'); setStep('codigo') }
+      else if (data && data.error === 'espera') { setInfo('Su código anterior sigue activo — revíselo en su WhatsApp. Puede volver a pedir otro en un momento.'); setStep('codigo') }
       else if (data && data.error === 'limite_diario') setError('Pidió demasiados códigos hoy. Espere un momento o escríbale al tesorero por WhatsApp.')
       else setError('No pudimos enviar el código. Intente de nuevo.')
     } catch (err) {
@@ -149,18 +150,19 @@ export default function VerifyScreen({ onVerified }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Escriba el código de 4 números</label>
             <input type="text" value={codigo} inputMode="numeric" autoComplete="one-time-code" maxLength={4}
-              onChange={e => { setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4)); setError('') }}
+              onChange={e => { setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4)); setError(''); setInfo('') }}
               placeholder="0000"
               style={{ ...inputStyle, fontSize: 'var(--text-2xl)', fontWeight: 800, letterSpacing: '0.5em', textAlign: 'center', fontFamily: 'var(--font-display)' }}
               onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)' }} />
           </div>
+          {info && <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted, #6b7280)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{info}</p>}
           {error && <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--error-500)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{error}</p>}
           <button type="button" onClick={verificar} disabled={loading || codigo.length < 4} style={cta(loading || codigo.length < 4)}>
             {loading && spinner}{loading ? 'Verificando…' : 'Verificar y continuar'}
           </button>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button type="button" onClick={() => { setStep('nombre'); setError(''); setCodigo('') }}
+            <button type="button" onClick={() => { setStep('nombre'); setError(''); setInfo(''); setCodigo('') }}
               style={{ background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
               ← Cambiar de alumno
             </button>

@@ -54,6 +54,11 @@ export async function processFile(file) {
 
 export function friendlyError(err) {
   const msg = String(err?.message || err || '').toLowerCase()
+  // Sesión OTP vencida/no coincide (crear_pago la rechaza): mensaje claro, NO el genérico de conexión.
+  if (msg.includes('sesion_invalida') || msg.includes('sesion_no_coincide'))
+    return 'Su sesión venció. Vuelva a la pantalla de inicio y verifíquese de nuevo para poder pagar.'
+  if (msg.includes('monto_invalido'))
+    return 'Hubo un problema con el monto del pago. Vuelva a elegir los meses e intente de nuevo.'
   if (!navigator.onLine || msg.includes('failed to fetch') || msg.includes('network'))
     return 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'
   if (msg.includes('payload') || msg.includes('large') || msg.includes('size') || msg.includes('exceeded'))

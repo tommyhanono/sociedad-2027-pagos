@@ -28,15 +28,17 @@ alter table public.otp_sesiones enable row level security;
 revoke all on public.otp_sesiones from anon, authenticated;
 
 
--- buscar_alumnos: ahora busca por nombre del sistema O nombre completo, y devuelve ambos
-drop function if exists public.buscar_alumnos(text);
-create function public.buscar_alumnos(q text)
+-- buscar_alumnos: busca por nombre del sistema O nombre completo. Hardening 2026-06-28: mínimo 3 chars
+-- (reduce enumeración del padrón) + escapa los metacaracteres LIKE (% _ \) del input del usuario para
+-- que no se usen como comodín (q='%' ya no trae a todos).
+create or replace function public.buscar_alumnos(q text)
 returns table(nombre text, nombre_completo text)
 language sql security definer set search_path to 'public' as $fn$
   select a.nombre, coalesce(a.nombre_completo, a.nombre)
   from alumnos a
-  where length(btrim(coalesce(q,''))) >= 2
-    and (a.nombre ilike '%'||btrim(q)||'%' or a.nombre_completo ilike '%'||btrim(q)||'%')
+  where length(btrim(coalesce(q,''))) >= 3
+    and (a.nombre ilike '%'||replace(replace(replace(btrim(q),'\','\\'),'%','\%'),'_','\_')||'%' escape '\'
+      or a.nombre_completo ilike '%'||replace(replace(replace(btrim(q),'\','\\'),'%','\%'),'_','\_')||'%' escape '\')
   order by coalesce(a.nombre_completo, a.nombre) limit 10;
 $fn$;
 
@@ -48,6 +50,7 @@ alter table public.otp_codigos add column if not exists dia date;
 create or replace function public.solicitar_codigo(p_nombre text)
 returns jsonb language plpgsql security definer set search_path to 'public' as $fn$
 declare v_nom text; v_tel text; v_codigo text; v_prev timestamptz; v_envios int; v_dia date;
+  v_hoy date := (now() at time zone 'America/Panama')::date;   -- el tope diario usa hora de Panamá
   v_url text := '<WEBHOOK_URL>';
   v_secret text := '<ALUMNOS_SECRET>';
 begin
@@ -57,11 +60,11 @@ begin
   if v_tel is null then return jsonb_build_object('ok', false, 'error', 'no_habilitado'); end if;
   select creado, envios_dia, dia into v_prev, v_envios, v_dia from otp_codigos where nombre = v_nom;
   if v_prev is not null and v_prev > now() - interval '45 seconds' then return jsonb_build_object('ok', false, 'error', 'espera'); end if;
-  if v_dia is distinct from current_date then v_envios := 0; end if;
+  if v_dia is distinct from v_hoy then v_envios := 0; end if;
   if coalesce(v_envios,0) >= 15 then return jsonb_build_object('ok', false, 'error', 'limite_diario'); end if;
   v_codigo := lpad(((floor(random()*9000))::int + 1000)::text, 4, '0');
   insert into otp_codigos(nombre, codigo, expira, intentos, creado, envios_dia, dia)
-    values (v_nom, v_codigo, now() + interval '10 minutes', 0, now(), coalesce(v_envios,0)+1, current_date)
+    values (v_nom, v_codigo, now() + interval '10 minutes', 0, now(), coalesce(v_envios,0)+1, v_hoy)
     on conflict (nombre) do update set codigo=excluded.codigo, expira=excluded.expira, intentos=0, creado=now(),
       envios_dia=excluded.envios_dia, dia=excluded.dia;
   perform net.http_post(url := v_url,

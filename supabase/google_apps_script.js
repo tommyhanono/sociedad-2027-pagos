@@ -245,6 +245,12 @@ function sendWhatsApp(message, attempts) {
   return sendWhatsAppTo(avisoDest(), message, attempts)
 }
 
+// Aviso de ERROR/atención con respaldo DURABLE: si Green está caído, lo encola (flushAvisos lo reintenta
+// hasta entregar) en vez de perderse en silencio. Para alertas de texto sobre un pago que necesita atención.
+function avisoSeguro(message) {
+  if (!sendWhatsApp(message)) { try { enqueueAviso(null, message, '') } catch (e) {} }
+}
+
 // Teléfonos de las familias para el BROADCAST. Llama a la RPC security-definer `telefonos_para_broadcast`
 // en Supabase (se crea con el PAT al lanzar). Devuelve [] si la RPC todavía no existe → broadcast no-op.
 function obtenerTelefonosBroadcast() {
@@ -1034,7 +1040,9 @@ function doPost(e) {
       return ContentService.createTextOutput('no autorizado').setMimeType(ContentService.MimeType.TEXT)
     }
 
-    const isTest  = GLOBAL_TEST_MODE || payload.test === true
+    // El tab del pago lo decide SOLO el modo global. El trigger legítimo nunca manda test:true en un
+    // INSERT, así que no dejamos que un payload externo fuerce el ruteo al TEST_TAB en producción.
+    const isTest  = GLOBAL_TEST_MODE
     const tabName = isTest ? TEST_TAB : MATRIX_TAB
     const row     = payload.record
 
@@ -1055,7 +1063,7 @@ function doPost(e) {
       if (isTest) {
         sheet = ss.insertSheet(tabName)
       } else {
-        sendWhatsApp('🚨 ERROR DE CONFIGURACIÓN: no existe el tab "' + tabName + '". Pago de "' +
+        avisoSeguro('🚨 ERROR DE CONFIGURACIÓN: no existe el tab "' + tabName + '". Pago de "' +
           ((row && row.janij) || 'sin nombre') + '" (id ' + (row && row.id) + ') NO procesado. Revisar el nombre de la hoja.')
         if (row.id) updatePagoEstado(row.id, { ok: false, motivo: 'tab_inexistente', tab: tabName })
         return ContentService.createTextOutput('error: tab "' + tabName + '" no existe').setMimeType(ContentService.MimeType.TEXT)
@@ -1073,7 +1081,7 @@ function doPost(e) {
       const tag2  = isTest ? '[TEST] ' : ''
       const pfx2  = isTest ? '🧪 [TEST]\n' : ''
       const sub2  = (row.janij || 'sin nombre').trim()
-      sendWhatsApp(
+      avisoSeguro(
         pfx2 + '⚠️ Pago recibido con monto inválido\n' +
         '👤 Enviado como: "' + sub2 + '"\n' +
         '💰 B/.' + monto + '\n' +
@@ -1113,7 +1121,7 @@ function doPost(e) {
           let priorWho = prior
           try { priorWho = (JSON.parse(prior).janij) || prior } catch (e) {}
           const pfx = isTest ? '🧪 [TEST]\n' : ''
-          sendWhatsApp(pfx + '🚫 Comprobante DUPLICADO\n' +
+          avisoSeguro(pfx + '🚫 Comprobante DUPLICADO\n' +
             '👤 Enviado como: "' + (row.janij || '') + '"\n' +
             '💰 B/.' + monto + '\n' +
             'Este MISMO comprobante ya se usó para acreditar a "' + priorWho + '". NO se aplicó. Revisar.' + ocrInfo)
@@ -1188,7 +1196,7 @@ function doPost(e) {
         appendLogRow(sheet, fecha, row.janij || '', monto, row.mes || '', estado, row.comprobante_url || '')
         SpreadsheetApp.flush()
       } catch (logErr) {
-        sendWhatsApp((isTest ? '🧪 [TEST]\n' : '') +
+        avisoSeguro((isTest ? '🧪 [TEST]\n' : '') +
           '⚠️ Pago ' + (aplicado ? 'YA APLICADO en la matriz' : 'recibido') + ' pero FALLÓ escribir el log\n' +
           '👤 ' + (matchResult.matched || (row.janij || 'sin nombre')) + '\n' +
           '💰 B/.' + monto + (aplicado && distLog.length ? '\n📅 ' + distLog.join(' · ') : '') + '\n' +
@@ -1324,7 +1332,7 @@ function doPost(e) {
   } catch (err) {
     try {
       const isTestMode = typeof GLOBAL_TEST_MODE !== 'undefined' && GLOBAL_TEST_MODE
-      sendWhatsApp(
+      avisoSeguro(
         (isTestMode ? '🧪 [TEST]\n' : '') +
         '🔴 Error interno en el webhook\n' +
         err.message + '\n' +

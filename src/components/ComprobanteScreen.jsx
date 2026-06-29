@@ -70,15 +70,11 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       const crearRpc = await supabase.rpc('crear_pago', {
         p_janij: alumno.trim(), p_monto: montoFinal, p_mes: mesLabel, p_comprobante_url: comprobante_url, p_token: token,
       })
-      if (!crearRpc.error && crearRpc.data) {
-        nuevoPagoId = crearRpc.data
-      } else {
-        const { data: inserted, error: insertError } = await supabase.from('pagos').insert({
-          janij: alumno.trim(), monto: montoFinal, mes: mesLabel, comprobante_url,
-        }).select('id').single()
-        if (insertError) throw insertError
-        nuevoPagoId = inserted?.id || null
-      }
+      // `pagos` está cerrada al rol anon (RLS), así que un insert directo SIEMPRE daría 401 y solo
+      // enmascararía la causa real de crear_pago (ej. sesion_invalida). Propagamos el error real para
+      // que friendlyError dé el mensaje correcto (no el genérico "Revise su conexión").
+      if (crearRpc.error) throw crearRpc.error
+      nuevoPagoId = crearRpc.data
       attemptIdRef.current = null
       onSuccess({ janij: alumnoDisplay || alumno, monto: montoFinal, mes: mesLabel, comprobante_url, pagoId: nuevoPagoId })
     } catch (err) {

@@ -25,7 +25,8 @@ export default function PanelAdmin() {
       if (d && d.ok) setData(d.alumnos || [])
       else setError('Contraseña incorrecta.')
     } catch (e) {
-      setError('No se pudo conectar. Revise su internet e intente de nuevo.')
+      console.error(e)
+      setError('No se pudo cargar el panel. Intente de nuevo.')
     } finally { setLoading(false) }
   }
 
@@ -35,7 +36,7 @@ export default function PanelAdmin() {
       const meses = (a.meses || '').split(',').map(s => s.trim()).filter(Boolean)
       const pagado = Math.min(meses.length, 11) * CUOTA
       const saldo = Math.max(0, TOTAL_ANUAL - pagado)
-      return { nombre: a.nombre, tel: a.tel || '', nMeses: meses.length, pagado, saldo, alDia: saldo === 0 }
+      return { id: a.id || a.nombre, nombre: a.nombre, tel: a.tel || '', nMeses: meses.length, pagado, saldo, alDia: saldo === 0 }
     })
     const filtered = q.trim()
       ? rows.filter(r => r.nombre.toLowerCase().includes(q.trim().toLowerCase()))
@@ -118,7 +119,7 @@ export default function PanelAdmin() {
       {/* Tabla */}
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         {filas.map((r, i) => (
-          <div key={r.nombre} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderTop: i ? '1px solid #eef0f5' : 'none', background: r.alDia ? '#fff' : '#fff8f6' }}>
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderTop: i ? '1px solid #eef0f5' : 'none', background: r.alDia ? '#fff' : '#fff8f6' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, color: 'var(--text-strong, #0E254A)', fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.nombre}</div>
               <div style={{ fontSize: 12.5, color: '#889' }}>{r.nMeses} de 11 meses · pagó B/.{r.pagado}</div>
