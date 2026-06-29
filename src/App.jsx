@@ -5,6 +5,7 @@ import MonthsScreen from './components/MonthsScreen'
 import PaymentInfo from './components/PaymentInfo'
 import ComprobanteScreen from './components/ComprobanteScreen'
 import SuccessScreen from './components/SuccessScreen'
+import PanelAdmin from './components/PanelAdmin'
 
 const TOKEN_KEY = 'sociedad2027_sesion'
 
@@ -13,6 +14,8 @@ function parseMeses(s) {
 }
 
 export default function App() {
+  // Ruta oculta del panel de la tesorera (#panel), protegida por contraseña server-side.
+  const isPanel = typeof window !== 'undefined' && window.location.hash === '#panel'
   const [sesion, setSesion]   = useState(null)     // { nombre, nombreCompleto, meses: [], token }
   const [pago, setPago]       = useState(null)     // { meses: [codes], mesesFull: [names], monto, mesLabel }
   const [screen, setScreen]   = useState('verify') // verify → months → info → comprobante → success
@@ -22,6 +25,7 @@ export default function App() {
   // "Recordame": al abrir, si hay token guardado y sigue válido (hasta fin de año), restaura la
   // sesión sin pedir código. Si venció o no existe, va a la pantalla de verificación. (NO se toca.)
   useEffect(() => {
+    if (isPanel) { setRestoring(false); return }
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) { setRestoring(false); return }
     let cancelled = false
@@ -58,6 +62,8 @@ export default function App() {
 
   const shell = { width: '100%', maxWidth: 'var(--app-max-w)', margin: '0 auto', padding: '8px var(--app-pad-x) 40px', minHeight: '100vh' }
   const alumnoDisplay = sesion ? (sesion.nombreCompleto || sesion.nombre) : ''
+
+  if (isPanel) return <PanelAdmin />
 
   if (restoring) {
     return (

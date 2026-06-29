@@ -234,9 +234,15 @@ function sendWhatsAppTo(chatId, message, attempts) {
       payload: JSON.stringify({ chatId: chatId, message: message }) }, attempts)
 }
 
-// Aviso a Marce (WA_CHAT_ID) — atajo de sendWhatsAppTo (mismo blindaje que todo lo demás).
+// Destino de los avisos a la tesorera. En MODO TEST van a TEST_PHONE (el número del dueño), para NO
+// molestar a la tesorera real con mensajes [TEST]. En producción van a WA_CHAT_ID (la tesorera).
+function avisoDest() {
+  return GLOBAL_TEST_MODE ? (TEST_PHONE + '@c.us') : WA_CHAT_ID
+}
+
+// Aviso a la tesorera — atajo de sendWhatsAppTo (mismo blindaje que todo lo demás).
 function sendWhatsApp(message, attempts) {
-  return sendWhatsAppTo(WA_CHAT_ID, message, attempts)
+  return sendWhatsAppTo(avisoDest(), message, attempts)
 }
 
 // Teléfonos de las familias para el BROADCAST. Llama a la RPC security-definer `telefonos_para_broadcast`
@@ -279,7 +285,7 @@ function sendWhatsAppWithImage(caption, imageUrl, attempts) {
     // puede fallar y el siguiente entrar. Si tras los reintentos el archivo no entró, caemos al texto + URL.
     const okFile = greenApiSend('sendFileByUpload',
       { method: 'post', muteHttpExceptions: true,
-        payload: { chatId: WA_CHAT_ID, caption: caption, fileName: 'comprobante.' + ext, file: blob } }, attempts)
+        payload: { chatId: avisoDest(), caption: caption, fileName: 'comprobante.' + ext, file: blob } }, attempts)
     if (okFile) return true
     return sendWhatsApp(caption + '\n🧾 ' + imageUrl, attempts)
   } catch (e) {
