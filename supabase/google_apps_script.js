@@ -48,14 +48,14 @@ const EXCLUDED_STUDENTS = new Set(['joyce e'])
 
 // ── WhatsApp (Green API) ──────────────────────────────────────
 // WA_TOKEN es un secreto server-side → se lee de Script Properties (igual que ANTHROPIC_KEY/ALUMNOS_SECRET).
-// El fallback al literal mantiene el webhook funcionando HASTA que se setee la propiedad (transición SIN
-// downtime); el guard evita romper triggers con permisos limitados.
-// 🔒 TODO seguridad: tras ROTAR el token en Green API y setear la Script Property `WA_TOKEN`, BORRAR el literal.
+// El token viejo fue ROTADO en Green API (2026-06-28) y el literal BORRADO del repo. El valor real vive
+// SOLO en la Script Property WA_TOKEN (se setea con el comando admin SETDEST {wa_token}). WA_INSTANCE (el
+// id de instancia, NO secreto) queda como fallback.
 function _waProp(key, fallback) {
   try { return PropertiesService.getScriptProperties().getProperty(key) || fallback } catch (e) { return fallback }
 }
 const WA_INSTANCE  = _waProp('WA_INSTANCE', '7107661922')
-const WA_TOKEN     = _waProp('WA_TOKEN', '7fe84dc2b26d4bc598f4967ddf97e3ec9518892fe5984bd3ba')
+const WA_TOKEN     = _waProp('WA_TOKEN', '')
 const WA_CHAT_ID   = _waProp('WA_CHAT_ID', '50766797887@c.us')   // a quién llega el comprobante (Marcela). Cambiable vía Script Property / SETDEST.
 // En modo test, los códigos OTP van SIEMPRE a este número (el del dueño), no al de la familia.
 const TEST_PHONE   = _waProp('TEST_PHONE', '50766818669')   // a dónde van OTP/preview en modo test. Cambiable vía Script Property / SETDEST.
@@ -761,6 +761,9 @@ function doPost(e) {
       if (payload.wa_chat_id) { pp.setProperty('WA_CHAT_ID', String(payload.wa_chat_id)); out.push('WA_CHAT_ID=' + payload.wa_chat_id) }
       if (payload.test_phone) { pp.setProperty('TEST_PHONE', String(payload.test_phone)); out.push('TEST_PHONE=' + payload.test_phone) }
       if (payload.test_whitelist !== undefined) { pp.setProperty('TEST_WHITELIST', String(payload.test_whitelist)); out.push('TEST_WHITELIST=[' + payload.test_whitelist + ']') }
+      // WA_TOKEN (secreto de Green) y WA_INSTANCE — para rotar el token sin tocar el código. Respuesta enmascarada.
+      if (payload.wa_token) { pp.setProperty('WA_TOKEN', String(payload.wa_token)); out.push('WA_TOKEN=***seteado (' + String(payload.wa_token).length + ' chars)***') }
+      if (payload.wa_instance) { pp.setProperty('WA_INSTANCE', String(payload.wa_instance)); out.push('WA_INSTANCE=' + payload.wa_instance) }
       return ContentService.createTextOutput('[SETDEST] ' + (out.join(' · ') || 'nada que setear') + ' (toma efecto en el próximo mensaje)').setMimeType(ContentService.MimeType.TEXT)
     }
 
