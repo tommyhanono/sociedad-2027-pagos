@@ -316,7 +316,9 @@ function enqueueAviso(id, caption, imageUrl) {
 
 // Vacía la cola de avisos (1 intento por aviso; el trigger corre seguido = la cadencia de reintento).
 // Lo dispara el trigger time-driven; también se puede correr a mano desde el editor.
-function flushAvisos() {
+function flushAvisos(maxMs, maxImg) {
+  const budget = maxMs || 240000                  // tope de TIEMPO (default generoso); el flush oportunista pasa ~45s
+  const imgCap = (maxImg == null) ? 20 : maxImg   // tope de avisos CON imagen (lo lento) por corrida
   const props = PropertiesService.getScriptProperties()
   // Mutex liviano POR PROPIEDAD — NO usa el lock de pagos, para que vaciar la cola nunca bloquee un cobro.
   const busy = props.getProperty('flush_busy')
@@ -325,15 +327,18 @@ function flushAvisos() {
   props.setProperty('flush_busy', String(now))
   try {
     const all = props.getProperties()
-    let n = 0
+    let n = 0, imgN = 0
     for (const key in all) {
       if (key.indexOf(AVISO_PREFIX) !== 0) continue
       if (n >= 20) break                                             // tope por corrida; el resto al próximo flush
-      n++
+      if (new Date().getTime() - now > budget) break                 // TOPE DE TIEMPO: no comerse el límite de 6 min de Apps Script
       let item
       try { item = JSON.parse(all[key]) } catch (e) { props.deleteProperty(key); continue }
-      const ok = item.imageUrl ? sendWhatsAppWithImage(item.caption, item.imageUrl, 1)
-                               : sendWhatsApp(item.caption, 1)
+      const isImg = !!item.imageUrl
+      if (isImg && imgN >= imgCap) continue                          // las imágenes son lo lento → tope aparte por corrida
+      n++; if (isImg) imgN++
+      const ok = isImg ? sendWhatsAppWithImage(item.caption, item.imageUrl, 1)
+                       : sendWhatsApp(item.caption, 1)
       if (ok) {
         props.deleteProperty(key)                                    // entregado por WhatsApp → fuera de la cola
       } else if (now - (item.ts || 0) > 30 * 24 * 3600 * 1000) {
@@ -743,7 +748,9 @@ function doPost(e) {
     // Vaciado OPORTUNISTA de la cola de avisos: en CADA actividad del webhook reintentamos los avisos
     // pendientes → entrega garantizada por WhatsApp SIN depender de un trigger (no necesita permisos
     // nuevos). Barato si la cola está vacía (mutex + sin items = milisegundos). Best-effort, nunca rompe.
-    try { flushAvisos() } catch (eFlush) {}
+    // Flush oportunista de la cola CON presupuesto ajustado (≤45s, ≤3 imágenes): así vaciar la cola
+    // NUNCA se come el límite de 6 min y deja sin procesar el pago de esta misma ejecución.
+    try { flushAvisos(45000, 3) } catch (eFlush) {}
 
     // ── SEGURIDAD ──────────────────────────────────────────────────────────────
     // El webhook es un endpoint PÚBLICO. Las operaciones de ADMIN/DEBUG (leer la hoja, setear
@@ -1104,6 +1111,11 @@ function doPost(e) {
     // (el envío por WhatsApp es la op más pesada; tenerlo dentro del lock hacía que un pago concurrente
     // hiciera timeout y se perdiera cuando Green estaba caído/flapeando).
     let avisoCaption = null, avisoUrl = '', avisoLabel = '', avisoMontoOut = 0, respText = null
+    // Baseline: si el procesamiento falla a mitad (ej. Google Sheets transitorio), igual tenemos los
+    // datos para ENTREGAR el comprobante a la tesorera (no perderlo) — ver el catch de la sección crítica.
+    avisoUrl = row.comprobante_url || ''
+    avisoLabel = (row.janij || 'pago').toString().trim()
+    avisoMontoOut = monto
 
     // ── SECCIÓN CRÍTICA — serializada con LockService ──────────────────────────
     // Evita que dos pagos simultáneos al mismo alumno se pisen (read-modify-write atómico).
@@ -1336,6 +1348,14 @@ function doPost(e) {
 
       const tag = isTest ? '[TEST] ' : ''
       respText = tag + estado
+    } catch (procErr) {
+      // Error procesando el pago DENTRO del lock (ej. Google Sheets devuelve un 5xx transitorio). En vez
+      // de saltar al catch genérico (que perdía el comprobante), igual lo entregamos con lo básico (el
+      // envío va FUERA del lock) + marcamos estado para que el form de la mamá no quede esperando eterno.
+      avisoCaption = (isTest ? '🧪 [TEST]\n' : '') + '⚠️ Pago de "' + avisoLabel + '" — B/.' + avisoMontoOut +
+        ' — ERROR al procesar en la planilla (' + ((procErr && procErr.message) || procErr) + '). Revisar/anotar manualmente.'
+      try { updatePagoEstado(row.id, { ok: false, found: false, motivo: 'error_proceso', monto: avisoMontoOut }) } catch (e) {}
+      respText = 'error proceso: ' + ((procErr && procErr.message) || procErr)
     } finally {
       lock.releaseLock()
     }
