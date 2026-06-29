@@ -27,7 +27,7 @@ declare v_id uuid; v_nom text; v_exp timestamptz;
 begin
   select nombre, expira into v_nom, v_exp from otp_sesiones where token = p_token;
   if v_nom is null or v_exp < now() then raise exception 'sesion_invalida'; end if;
-  if lower(btrim(v_nom)) <> lower(btrim(p_janij)) then raise exception 'sesion_no_coincide'; end if;
+  if lower(btrim(v_nom)) is distinct from lower(btrim(p_janij)) then raise exception 'sesion_no_coincide'; end if;
   if p_monto is null or p_monto < 0.01 or p_monto > 5000 then raise exception 'monto_invalido'; end if;
   -- Guarda el nombre CANÓNICO de la sesión (v_nom), no el p_janij crudo del caller, para que coincida
   -- exacto con el sheet (el webhook hace findPersonRow contra janij).

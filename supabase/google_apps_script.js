@@ -1100,13 +1100,24 @@ function doPost(e) {
     // no necesita el lock) para NO alargar el bloqueo. Best-effort: '' si falla o no hay key.
     const ocrInfo = readComprobanteInfo(row.comprobante_url || '')
 
+    // Datos del aviso a la tesorera — se llenan DENTRO del lock pero el ENVÍO se hace DESPUÉS de soltarlo
+    // (el envío por WhatsApp es la op más pesada; tenerlo dentro del lock hacía que un pago concurrente
+    // hiciera timeout y se perdiera cuando Green estaba caído/flapeando).
+    let avisoCaption = null, avisoUrl = '', avisoLabel = '', avisoMontoOut = 0, respText = null
+
     // ── SECCIÓN CRÍTICA — serializada con LockService ──────────────────────────
     // Evita que dos pagos simultáneos al mismo alumno se pisen (read-modify-write atómico).
     const lock = LockService.getScriptLock()
     try {
       lock.waitLock(20000)
     } catch (lockErr) {
-      return ContentService.createTextOutput('ocupado, reintentar en un momento').setMimeType(ContentService.MimeType.TEXT)
+      // NO descartar en silencio: el pago YA está en Supabase. Avisar a la tesorera (DURABLE: avisoSeguro
+      // encola si Green está caído) + escribir estado para que el form no quede en "registrando" eterno.
+      // Así un pago contendido NUNCA se pierde sin rastro.
+      try { updatePagoEstado(row.id, { ok: false, found: false, motivo: 'ocupado_reintentar', monto: monto }) } catch (e) {}
+      avisoSeguro((isTest ? '🧪 [TEST]\n' : '') + '⚠️ Pago id=' + (row.id || '?') + ' de "' + (row.janij || 'sin nombre') +
+        '" (B/.' + monto + ') NO se procesó por contención del sistema. Está en la base de datos — anótelo o reintente manualmente.')
+      return ContentService.createTextOutput('ocupado — avisado (no se pierde)').setMimeType(ContentService.MimeType.TEXT)
     }
     try {
       // Idempotencia (dentro del lock = atómico): si este id ya se procesó, no re-aplicar.
@@ -1273,17 +1284,12 @@ function doPost(e) {
       // detecte recibos repetidos de un vistazo. ocrInfo es '' si no hay key/falla.
       waCaption += ocrInfo
 
-      // Aviso a Marce por WhatsApp: intento directo (con reintentos + auto-reboot si la instancia cayó).
-      // Si NO entra: lo encolo (se reintenta solo en cada actividad del webhook hasta entregarlo) Y,
-      // worst-case, lo mando por email de respaldo a sociedad.2027@gmail.com. Así nunca se pierde.
-      const okAviso = row.comprobante_url
-        ? sendWhatsAppWithImage(waCaption, row.comprobante_url)
-        : sendWhatsApp(waCaption)
-      if (!okAviso) {
-        enqueueAviso(row.id, waCaption, row.comprobante_url || '')
-        emailComprobante('Comprobante — ' + (matchResult.matched || submitted || 'pago') + ' — B/.' + monto,
-          waCaption, row.comprobante_url || '')
-      }
+      // Captura del aviso para enviarlo DESPUÉS de soltar el lock (el envío por WhatsApp es la op más
+      // pesada; mandarlo aquí dentro retenía el lock y hacía perder pagos concurrentes con Green caído).
+      avisoCaption  = waCaption
+      avisoUrl      = row.comprobante_url || ''
+      avisoLabel    = matchResult.matched || submitted || 'pago'
+      avisoMontoOut = monto
 
       // Resultado a Supabase (para el saldo del form)
       let resultObj
@@ -1329,10 +1335,24 @@ function doPost(e) {
       }
 
       const tag = isTest ? '[TEST] ' : ''
-      return ContentService.createTextOutput(tag + estado).setMimeType(ContentService.MimeType.TEXT)
+      respText = tag + estado
     } finally {
       lock.releaseLock()
     }
+
+    // ── FUERA DEL LOCK: aviso a la tesorera (la op más pesada) ──────────────────
+    // El lock ya se soltó, así que aunque Green esté caído y esto tarde (reintentos + reboot), NO bloquea
+    // otros pagos. Si no entra: encola (reintento durable hasta entregar) + email de respaldo. Nunca se pierde.
+    if (avisoCaption != null) {
+      const okAviso = avisoUrl
+        ? sendWhatsAppWithImage(avisoCaption, avisoUrl)
+        : sendWhatsApp(avisoCaption)
+      if (!okAviso) {
+        enqueueAviso(row.id, avisoCaption, avisoUrl)
+        emailComprobante('Comprobante — ' + avisoLabel + ' — B/.' + avisoMontoOut, avisoCaption, avisoUrl)
+      }
+    }
+    return ContentService.createTextOutput(respText != null ? respText : 'ok').setMimeType(ContentService.MimeType.TEXT)
 
   } catch (err) {
     try {
