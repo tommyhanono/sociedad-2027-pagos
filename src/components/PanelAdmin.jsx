@@ -33,7 +33,7 @@ export default function PanelAdmin() {
   const filas = useMemo(() => {
     if (!data) return []
     const rows = data.map(a => {
-      const meses = (a.meses || '').split(',').map(s => s.trim()).filter(Boolean)
+      const meses = [...new Set((a.meses || '').split(',').map(s => s.trim()).filter(Boolean))]
       const pagado = Math.min(meses.length, 11) * CUOTA
       const saldo = Math.max(0, TOTAL_ANUAL - pagado)
       return { id: a.id || a.nombre, nombre: a.nombre, tel: a.tel || '', nMeses: meses.length, pagado, saldo, alDia: saldo === 0 }
@@ -50,7 +50,7 @@ export default function PanelAdmin() {
     if (!data) return null
     let recaudado = 0, alDia = 0
     data.forEach(a => {
-      const n = Math.min((a.meses || '').split(',').filter(x => x.trim()).length, 11)
+      const n = Math.min(new Set((a.meses || '').split(',').map(x => x.trim()).filter(Boolean)).size, 11)
       recaudado += n * CUOTA
       if (n >= 11) alDia++
     })
@@ -86,7 +86,10 @@ export default function PanelAdmin() {
   const pct = totales.esperado ? Math.round((totales.recaudado / totales.esperado) * 100) : 0
   return (
     <div style={shell}>
-      <h1 style={{ fontFamily: 'var(--font-display, sans-serif)', fontSize: 24, color: 'var(--text-strong, #0E254A)', margin: '0 0 4px' }}>Panel · Sociedad 2027</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 4px' }}>
+        <h1 style={{ fontFamily: 'var(--font-display, sans-serif)', fontSize: 24, color: 'var(--text-strong, #0E254A)', margin: 0 }}>Panel · Sociedad 2027</h1>
+        <button onClick={() => { setData(null); setPass('') }} style={{ background: 'none', border: '1.5px solid var(--border-strong, #e3e6ee)', borderRadius: 10, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#445' }}>Salir 🔒</button>
+      </div>
       <p style={{ fontSize: 13, color: '#889', margin: '0 0 18px' }}>Cuota B/.{CUOTA}/mes · 11 meses (Feb–Dic) · total B/.{TOTAL_ANUAL} por familia</p>
 
       {/* Resumen */}

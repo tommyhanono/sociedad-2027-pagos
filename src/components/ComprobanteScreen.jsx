@@ -23,6 +23,13 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       if (fileRef.current) fileRef.current.value = ''
       return
     }
+    // Solo imagen o PDF (el bucket también lo limita server-side, pero avisamos amable acá).
+    const okType = f.type.startsWith('image/') || f.type === 'application/pdf' || /\.(pdf|jpe?g|png|heic|heif|webp|gif)$/i.test(f.name)
+    if (!okType) {
+      setError('Suba una foto o un PDF del comprobante (no otro tipo de archivo).')
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
     setError(''); setPreviewBroken(false); setFileProcessing(true)
     try {
       const processed = await processFile(f)
@@ -91,7 +98,7 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--section-gap)' }}>
       <StepBar step={3} />
-      <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>← Volver</button>
+      <button type="button" onClick={() => { if (!loading) onBack() }} disabled={loading} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: '4px 0', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-muted)', opacity: loading ? 0.5 : 1 }}>← Volver</button>
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>Suba su comprobante</h1>

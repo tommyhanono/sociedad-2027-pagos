@@ -118,7 +118,9 @@ export default function VerifyScreen({ onVerified }) {
             <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Nombre del alumno o alumna</label>
             <div style={{ position: 'relative' }}>
               <input type="text" value={janij} inputMode="text" autoComplete="off" maxLength={60}
+                autoCapitalize="off" autoCorrect="off" spellCheck={false}
                 onChange={e => onNombreChange(e.target.value)} placeholder="Escriba aquí el nombre"
+                onKeyDown={e => { if (e.key === 'Enter' && !loading) { e.preventDefault(); enviarCodigo() } }}
                 style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'var(--shadow-xs)'; setTimeout(() => setSugerencias([]), 150) }} />
@@ -151,6 +153,7 @@ export default function VerifyScreen({ onVerified }) {
             <label style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)' }}>Escriba el código de 4 números</label>
             <input type="text" value={codigo} inputMode="numeric" autoComplete="one-time-code" maxLength={4}
               onChange={e => { setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4)); setError(''); setInfo('') }}
+              onKeyDown={e => { if (e.key === 'Enter' && codigo.length === 4 && !loading) { e.preventDefault(); verificar() } }}
               placeholder="0000"
               style={{ ...inputStyle, fontSize: 'var(--text-2xl)', fontWeight: 800, letterSpacing: '0.5em', textAlign: 'center', fontFamily: 'var(--font-display)' }}
               onFocus={e => { e.target.style.borderColor = 'var(--gold-400)'; e.target.style.boxShadow = 'var(--ring-gold)' }}

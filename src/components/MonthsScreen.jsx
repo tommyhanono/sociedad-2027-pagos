@@ -45,6 +45,7 @@ export default function MonthsScreen({ alumnoDisplay = '', mesesPagados = [], in
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-3xl)', color: 'var(--brand)', lineHeight: 1.1 }}>¿Qué va a pagar?</h1>
         <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Toque los meses que va a pagar. <strong style={{ color: 'var(--success-700,#15803d)' }}>Verde</strong> = ya pagado.</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>Enero aparece en gris porque no se cobra (la cuota va de febrero a diciembre).</p>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>

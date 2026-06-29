@@ -69,5 +69,5 @@ export function friendlyError(err) {
     return 'Parece que este comprobante ya fue enviado. Intente de nuevo o escríbale al tesorero.'
   if (!navigator.onLine)
     return 'Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'
-  return 'No pudimos enviar su comprobante. Revise su conexión e intente de nuevo. Si sigue, escríbale al tesorero por WhatsApp.'
+  return 'No pudimos enviar su comprobante. Inténtelo de nuevo en un momento. Si sigue, escríbale al tesorero por WhatsApp.'
 }

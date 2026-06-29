@@ -83,7 +83,10 @@ begin
   if v_nom is null then return jsonb_build_object('ok', false, 'error', 'vencido'); end if;
   select * into v_row from otp_codigos where nombre = v_nom;
   if not found or v_row.expira < now() or v_row.intentos >= 5 then return jsonb_build_object('ok', false, 'error', 'vencido'); end if;
-  if v_row.codigo <> btrim(p_codigo) then
+  -- Comparación NULL-safe: con `<>` un p_codigo NULL daba `codigo <> NULL` = NULL (no TRUE),
+  -- saltaba el branch de incorrecto y ENTREGABA token sin saber el código (bypass de auth).
+  -- `is distinct from` + coalesce trata NULL/vacío como un código distinto -> 'incorrecto'.
+  if v_row.codigo is distinct from btrim(coalesce(p_codigo, '')) then
     update otp_codigos set intentos = intentos + 1 where nombre = v_nom;
     return jsonb_build_object('ok', false, 'error', 'incorrecto', 'restantes', greatest(0, 5 - (v_row.intentos+1)));
   end if;
@@ -107,4 +110,5 @@ begin
 end; $fn$;
 
 -- Cerrar la fuga: meses_pagados(nombre) ya no es llamable por el público
-revoke execute on function public.meses_pagados(text) from public, anon;
+-- (incluye authenticated: si no, un JWT de signup salteaba el OTP y leía el saldo de cualquier familia)
+revoke execute on function public.meses_pagados(text) from public, anon, authenticated;
