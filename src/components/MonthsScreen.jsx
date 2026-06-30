@@ -7,9 +7,10 @@ export default function MonthsScreen({ alumnoDisplay = '', mesesPagados = [], in
   const [meses, setMeses] = useState(initialMeses)
   const [error, setError] = useState('')
 
-  const mesesPendientes = Math.max(0, 11 - mesesPagados.length)
-  const saldoPendiente  = mesesPendientes * CUOTA
   const esPagado = (m) => mesesPagados.includes(MONTHS_FULL[m])
+  const COBRABLES = MONTHS.filter(m => !MONTHS_DISABLED.has(m))            // Feb..Dic (11), sin Enero
+  const mesesPendientes = COBRABLES.filter(m => !esPagado(m)).length       // cuenta reales, inmune a dups
+  const saldoPendiente  = mesesPendientes * CUOTA
 
   const toggle = (m) => {
     if (MONTHS_DISABLED.has(m) || esPagado(m)) return

@@ -1123,13 +1123,12 @@ function doPost(e) {
     try {
       lock.waitLock(20000)
     } catch (lockErr) {
-      // NO descartar en silencio: el pago YA está en Supabase. Avisar a la tesorera (DURABLE: avisoSeguro
-      // encola si Green está caído) + escribir estado para que el form no quede en "registrando" eterno.
-      // Así un pago contendido NUNCA se pierde sin rastro.
-      try { updatePagoEstado(row.id, { ok: false, found: false, motivo: 'ocupado_reintentar', monto: monto }) } catch (e) {}
-      avisoSeguro((isTest ? '🧪 [TEST]\n' : '') + '⚠️ Pago id=' + (row.id || '?') + ' de "' + (row.janij || 'sin nombre') +
-        '" (B/.' + monto + ') NO se procesó por contención del sistema. Está en la base de datos — anótelo o reintente manualmente.')
-      return ContentService.createTextOutput('ocupado — avisado (no se pierde)').setMimeType(ContentService.MimeType.TEXT)
+      // Contención del lock: NO escribir estado (queda 'pendiente') ni avisar manualmente. El cron
+      // reconciliar_pagos re-dispara los pagos 'pendiente' (>2 min) con el lock libre y ahí se procesan
+      // NORMAL: se aplican al sheet Y se entrega el comprobante CON IMAGEN (path principal). Escribir un
+      // estado terminal acá los EXCLUÍA del reintento automático (reconciliar solo mira 'pendiente'/null)
+      // y solo mandaba texto sin imagen — por eso ahora se deja 'pendiente' y el cron lo rescata solo.
+      return ContentService.createTextOutput('ocupado — el cron lo reintenta solo en <5 min').setMimeType(ContentService.MimeType.TEXT)
     }
     try {
       // Idempotencia (dentro del lock = atómico): si este id ya se procesó, no re-aplicar.

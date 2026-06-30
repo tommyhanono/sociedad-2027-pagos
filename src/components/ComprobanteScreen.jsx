@@ -5,7 +5,7 @@ import StepBar from './StepBar'
 
 // PASO 3 — Subir comprobante. El alumno, el monto y los meses YA vienen elegidos (no se escribe nada).
 // OJO: la lógica de subida + hash (dedup) + crear_pago es IDÉNTICA a la de antes — solo cambió de lugar.
-export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', monto = 0, mesesFull = [], mesLabel = '', token = '', onSuccess, onBack }) {
+export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', monto = 0, mesesFull = [], mesLabel = '', token = '', onSuccess, onBack, onSalir }) {
   const [file, setFile] = useState(null)
   const [fileProcessing, setFileProcessing] = useState(false)
   const [previewBroken, setPreviewBroken] = useState(false)
@@ -53,7 +53,6 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
   async function handleSubmit() {
     if (loading || submittingRef.current) return
     if (!file) { setError('Suba la foto del comprobante.'); return }
-    if (!navigator.onLine) { setError('Parece que no tiene conexión a internet. Conéctese e intente de nuevo.'); return }
     submittingRef.current = true; setLoading(true); setError('')
     try {
       if (!attemptIdRef.current) {
@@ -155,6 +154,12 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       )}
 
       {error && <div style={{ borderRadius: 'var(--r-md)', padding: '14px 16px', background: 'var(--error-100)', color: '#991B1B', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>{error}</div>}
+      {error && error.includes('sesión venció') && onSalir && (
+        <button type="button" onClick={onSalir}
+          style={{ width: '100%', padding: '15px', borderRadius: 'var(--r-lg)', border: 'none', background: 'var(--grad-gold)', color: 'var(--text-on-gold)', fontSize: 'var(--text-md)', fontWeight: 800, fontFamily: 'var(--font-display)', cursor: 'pointer' }}>
+          Volver a verificarme
+        </button>
+      )}
 
       <button type="button" onClick={handleSubmit} disabled={loading || fileProcessing || !file}
         style={{ width: '100%', padding: '17px 24px', borderRadius: 'var(--r-lg)', border: 'none', background: (loading || fileProcessing || !file) ? 'var(--navy-300)' : 'var(--grad-submit)', color: 'var(--text-on-navy)', fontSize: 'var(--text-lg)', fontWeight: 800, fontFamily: 'var(--font-display)', cursor: (loading || fileProcessing || !file) ? 'not-allowed' : 'pointer', boxShadow: (loading || fileProcessing || !file) ? 'none' : 'var(--shadow-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
