@@ -66,9 +66,9 @@ export default function ComprobanteScreen({ alumno = '', alumnoDisplay = '', mon
       // INSERT plano (sin upsert): el bucket solo permite INSERT anónimo, NO SELECT, así que upsert:true
       // daría 403 ("row-level security"). En un reintento se resetea attemptIdRef en el catch, de modo que
       // el reintento genera un filename nuevo y no choca con un 409.
-      const { error: uploadError } = await supabase.storage.from('comprobantes').upload(filename, file.uploadFile, { contentType })
+      const { error: uploadError } = await supabase.storage.from('sociedad-comprobantes').upload(filename, file.uploadFile, { contentType })
       if (uploadError) throw uploadError
-      const { data: urlData } = supabase.storage.from('comprobantes').getPublicUrl(filename)
+      const { data: urlData } = supabase.storage.from('sociedad-comprobantes').getPublicUrl(filename)
       const comprobante_url = urlData.publicUrl
       const montoFinal = Math.round(monto * 100) / 100
 

@@ -63,8 +63,8 @@ const TEST_PHONE   = _waProp('TEST_PHONE', '50766818669')   // a dónde van OTP/
 // ── Supabase (para devolver el saldo real al form) ────────────
 // El webhook escribe el resultado en la columna `estado` de la fila recién insertada.
 // El form hace polling de esa columna para mostrarle a la mamá su saldo real del sheet.
-const SUPABASE_URL = 'https://obshrrzvfprsjeykqsen.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic2hycnp2ZnByc2pleWtxc2VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDMyMjIsImV4cCI6MjA5NzM3OTIyMn0.Lhlh3Sb9EQ8axxPsDBiEVVERdo8sDIZaGDhYQkxdNdo'
+const SUPABASE_URL = 'https://igsmhrwafhxlhmwcehiu.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlnc21ocndhZmh4bGhtd2NlaGl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTYyMTgsImV4cCI6MjA5ODI5MjIxOH0.YgABbnpPjbyEk9Pe0kP6Mx6Q8eBn5McxzZiAS5MJpYg'
 
 /** Escribe el resultado del pago (incluido el saldo real) en la fila de Supabase.
  *  El form lo lee por polling. Silencioso si falla — nunca debe romper el flujo. */
